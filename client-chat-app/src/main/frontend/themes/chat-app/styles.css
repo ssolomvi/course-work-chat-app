@@ -1,0 +1,21 @@
+@import url('./views/chatrooms-view.css');    html {
+      --lumo-space-xl: 1.875rem;
+      --lumo-space-l: 1.25rem;
+      --lumo-space-m: 0.625rem;
+      --lumo-space-s: 0.3125rem;
+      --lumo-space-xs: 0.1875rem;
+      --lumo-size-xl: 3rem;
+      --lumo-size-l: 2.5rem;
+      --lumo-size-m: 2rem;
+      --lumo-size-s: 1.75rem;
+      --lumo-size-xs: 1.5rem;
+
+    }
+
+    [theme~="dark"] {
+      --lumo-primary-color: hsl(282, 51%, 47%);
+      --lumo-primary-color-50pct: hsla(282, 51%, 47%, 0.5);
+      --lumo-primary-color-10pct: hsla(282, 51%, 47%, 0.1);
+      --lumo-primary-text-color: hsla(275, 100%, 68%, 0.93);
+
+    }
