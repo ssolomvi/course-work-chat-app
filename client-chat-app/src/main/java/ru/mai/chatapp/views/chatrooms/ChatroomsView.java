@@ -7,16 +7,21 @@ import com.vaadin.collaborationengine.UserInfo;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.Aside;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.page.Page;
 import com.vaadin.flow.component.progressbar.ProgressBar;
+import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
+import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.router.PageTitle;
@@ -145,23 +150,40 @@ public class ChatroomsView extends HorizontalLayout {
         header.add(channels, avatarGroup);
 
         // button add new chat room
-        Button buttonAddChatRoom = new Button("Add chat room");
-        buttonAddChatRoom.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        buttonAddChatRoom.addClickListener(clickEvent -> {
-            // todo: rest api: create room
-            // todo: heartbeat conection server for listening server for new rooms
-        });
+        Dialog dialogAddChatRoom = new Dialog();
+        dialogAddChatRoom.getElement().setAttribute("aria-label", "Add note");
 
+        VerticalLayout dialogLayout = createDialogLayout();
+        dialogAddChatRoom.add(dialogLayout);
+        dialogAddChatRoom.setHeaderTitle("Add chat room");
+
+        Button closeButton = new Button(new Icon("lumo", "cross"),
+                (e) -> dialogAddChatRoom.close());
+        closeButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        dialogAddChatRoom.getHeader().add(closeButton);
+
+        Button buttonAddChatRoom = new Button("Add chat room", e -> dialogAddChatRoom.open());
+        buttonAddChatRoom.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+//        buttonAddChatRoom.addClickListener(clickEvent -> {
+        // todo: rest api: create room
+        // todo: heartbeat conection server for listening server for new rooms
+//        });
+
+        // add to side
         side.add(header, tabs, buttonAddChatRoom);
 
+        // messages container
         HorizontalLayout msgInputBtnAddFileContainer = new HorizontalLayout();
         msgInputBtnAddFileContainer.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.FlexDirection.ROW, LumoUtility.Width.AUTO, LumoUtility.AlignItems.CENTER, Padding.SMALL);
+        msgInputBtnAddFileContainer.setJustifyContentMode(JustifyContentMode.EVENLY);
 
-        msgInputBtnAddFileContainer.add(input, dropDisabledSingleFileUpload);
-
+        // todo: add interrupt encryption
         ProgressBar progressBar = new ProgressBar(0, 1, 0);
 
         chatContainer.add(list, msgInputBtnAddFileContainer, progressBar);
+
+        msgInputBtnAddFileContainer.add(dropDisabledSingleFileUpload, input);
+
         add(chatContainer, side);
         setSizeFull();
         expand(list);
@@ -179,9 +201,35 @@ public class ChatroomsView extends HorizontalLayout {
 
 //        Span badge = new Span();
 //        badge.getElement().getThemeList().add("badge small contrast");
-        tab.add(new Span("#" + chat.name));
+        tab.add(new Span("# " + chat.name));
+
+        // todo: problem with all tabs closed
+        Button buttonCloseTab = new Button(new Icon("lumo", "cross"),
+                (e) -> tab.removeFromParent());
+        buttonCloseTab.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        tab.add(buttonCloseTab);
 
         return tab;
+    }
+
+    private VerticalLayout createDialogLayout() {
+        TextField loginField = new TextField("Login", "",
+                "User's login");
+        loginField.getStyle().set("padding-top", "0");
+
+        Select<String> selectAlgorithm = new Select<>();
+        selectAlgorithm.setLabel("Encrypt by");
+        // todo: algorithms
+        selectAlgorithm.setItems("LOKI", "MARS", "RC6", "DES", "DEAL", "Rijndael", "RSA");
+        selectAlgorithm.setValue("LOKI");
+
+        VerticalLayout fieldLayout = new VerticalLayout(loginField, selectAlgorithm);
+        fieldLayout.setSpacing(false);
+        fieldLayout.setPadding(false);
+        fieldLayout.setAlignItems(FlexComponent.Alignment.STRETCH);
+        fieldLayout.getStyle().set("width", "300px").set("max-width", "100%");
+
+        return fieldLayout;
     }
 
     @Override
