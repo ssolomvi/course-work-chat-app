@@ -19,7 +19,8 @@ bin/
 !**/src/test/**/bin/
 
 ### IntelliJ IDEA ###
-Client-chat-app/.idea
+.idea
+.idea/sonarlint
 *.iws
 *.iml
 *.ipr

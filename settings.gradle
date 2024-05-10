@@ -1,4 +1,5 @@
 rootProject.name = 'course-work-chat-app'
 include 'client-chat-app'
 include 'server-chat-app'
+include 'test-client-for-grpc'
 
