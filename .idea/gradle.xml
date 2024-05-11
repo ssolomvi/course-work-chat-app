@@ -10,6 +10,7 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/client-chat-app" />
+            <option value="$PROJECT_DIR$/cryptograpthy-starter" />
             <option value="$PROJECT_DIR$/server-chat-app" />
             <option value="$PROJECT_DIR$/test-client-for-grpc" />
           </set>

@@ -34,3 +34,11 @@ c
 3test-client-for-grpc/src/main/java/ru/mai/Main.java,1\9\192a5088f509c69ca8eddf142441c772cca7974c
 e
 5test-client-for-grpc/src/main/java/ru/mai/Client.java,d\2\d276316500ba3447750fd7f121c3d579c95221a4
+R
+"cryptograpthy-starter/build.gradle,f\d\fd79dccf7b437c7a4047c3dd596492fd7cdaf00a
+d
+4cryptograpthy-starter/src/main/java/ru/mai/Main.java,8\1\8152e04417f6a946ed5e8538d909fc2faa1dfb24
+s
+Ccryptograpthy-starter/src/main/java/ru/mai/CryptographyStarter.java,b\7\b7712f666d321ba4fcdb7cc54fe1deb4949c5733
+r
+Bcryptograpthy-starter/src/test/java/EncryptionDecryptionTests.java,c\7\c7727160ef921f5acf62d480eb59572a03afc84c

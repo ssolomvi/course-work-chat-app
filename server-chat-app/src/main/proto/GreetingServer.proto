@@ -4,21 +4,30 @@ package ru.mai;
 option java_package = "ru.mai";
 option java_multiple_files = true;
 
-message AddChatRoomRequest {
-
-}
-
 message HelloRequest {
-    string name = 1;
-
-    repeated string hobbies = 2;
+    string login = 1;
 }
 
 message HelloResponse {
-    string greeting = 1;
+    string diffi_helman_g = 1;
 }
 
 service GreetingService {
     rpc Greeting(HelloRequest) returns (HelloResponse);
 }
+
+message AddChatRoomRequest {
+    string user_login = 1;
+    string companion_login = 2;
+    string algorithm = 3;
+}
+
+message AddChatRoomResponse {
+    string diffi_helman_p = 1;
+    string algorithm = 2;
+    string encryption_mode = 3;
+    string padding_mode = 4;
+    string topic = 5;
+}
+
 
