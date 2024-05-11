@@ -5,18 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="475a51e8-fe7f-4a5b-b4d2-f402da0ccc0c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/cryptograpthy-starter/src/test/resources/catBig.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/cryptograpthy-starter/src/test/resources/catDecrypted.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/cryptograpthy-starter/src/test/resources/catEncrypted.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/cryptograpthy-starter/src/test/resources/catSmall.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/cryptograpthy-starter/src/test/resources/testProbabilisticPrimalityTests.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/gradle.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gradle.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/sonarlint/issuestore/3/4/3491b626476c62906b2eaf2c930e2400c2cd7bc4" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/sonarlint/issuestore/3/4/3491b626476c62906b2eaf2c930e2400c2cd7bc4" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/sonarlint/issuestore/index.pb" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/sonarlint/issuestore/index.pb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/sonarlint/securityhotspotstore/index.pb" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/sonarlint/securityhotspotstore/index.pb" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cryptograpthy-starter/src/test/resources/catEncrypted.txt" beforeDir="false" afterPath="$PROJECT_DIR$/cryptograpthy-starter/src/test/resources/catEncrypted.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/server-chat-app/src/main/java/ru/mai/GreetingServiceImpl.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/server-chat-app/src/main/java/ru/mai/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/server-chat-app/src/main/java/ru/mai/Main.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/server-chat-app/src/main/proto/GreetingServer.proto" beforeDir="false" afterPath="$PROJECT_DIR$/server-chat-app/src/main/proto/GreetingServer.proto" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/settings.gradle" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -80,13 +76,13 @@
       <recent name="C:\developmentInJava\course-work-6\course-work-chat-app\test-client-for-grpc\src\main" />
     </key>
   </component>
-  <component name="RunManager" selected="Gradle.EncryptionDecryptionTests">
-    <configuration name="Client" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
-      <option name="MAIN_CLASS_NAME" value="ru.mai.Client" />
-      <module name="course-work-chat-app.test-client-for-grpc.main" />
+  <component name="RunManager" selected="Application.Application">
+    <configuration name="Application" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="ru.mai.chatapp.Application" />
+      <module name="course-work-chat-app.client-chat-app.main" />
       <extension name="coverage">
         <pattern>
-          <option name="PATTERN" value="ru.mai.*" />
+          <option name="PATTERN" value="ru.mai.chatapp.*" />
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
@@ -193,10 +189,10 @@
     <recent_temporary>
       <list>
         <item itemvalue="Gradle.EncryptionDecryptionTests" />
+        <item itemvalue="Application.Application" />
         <item itemvalue="Gradle.EncryptionDecryptionTests.RSATest" />
         <item itemvalue="Gradle.EncryptionDecryptionTests.RSABlockTest" />
         <item itemvalue="Gradle.EncryptionDecryptionTests.RSATestForContextBigByteArr" />
-        <item itemvalue="Application.Client" />
       </list>
     </recent_temporary>
   </component>

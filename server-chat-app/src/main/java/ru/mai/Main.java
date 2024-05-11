@@ -9,7 +9,7 @@ public class Main {
     public static void main(String[] args) throws IOException, InterruptedException {
         try {
             Server server = ServerBuilder.forPort(8080)
-                    .addService(new GreetingServiceImpl())
+//                    .addService(new GreetingServiceImpl())
                     .build();
 
             server.start();
