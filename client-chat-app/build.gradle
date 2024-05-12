@@ -30,11 +30,14 @@ dependencies {
 	implementation 'com.vaadin:collaboration-engine:6.2.1'
 	implementation 'com.vaadin:vaadin-maven-plugin:24.3.11'
 
-	runtimeOnly 'com.h2database:h2:2.2.224'
+//	runtimeOnly 'com.h2database:h2:2.2.224'
+	implementation("org.postgresql:postgresql:42.2.24")
+
+	// lombok
+	compileOnly 'org.projectlombok:lombok:1.18.30'
 
 	implementation 'org.springframework.kafka:spring-kafka'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-//	runtimeOnly 'org.postgresql:postgresql'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.kafka:spring-kafka-test'
 }

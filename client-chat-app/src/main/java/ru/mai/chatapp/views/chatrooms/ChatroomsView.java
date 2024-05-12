@@ -91,12 +91,7 @@ public class ChatroomsView extends HorizontalLayout {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         UserInfo userInfo = new UserInfo(userDetails.getUsername(), userDetails.getUsername());
 
-        tabs = new Tabs();
-        for (ChatInfo chat : chats) {
-            tabs.add(createTab(chat));
-        }
-        tabs.setOrientation(Tabs.Orientation.VERTICAL);
-        tabs.addClassNames(LumoUtility.Flex.GROW, LumoUtility.Flex.SHRINK, LumoUtility.Overflow.HIDDEN);
+        tabs = createTabs(chats);
 
         // CollaborationMessageList displays messages that are in a
         // Collaboration Engine topic. You should give in the user details of
@@ -143,6 +138,7 @@ public class ChatroomsView extends HorizontalLayout {
                 LumoUtility.BoxSizing.BORDER);
         H3 channels = new H3("Chat rooms");
         channels.addClassNames(LumoUtility.Flex.GROW, LumoUtility.Margin.NONE);
+
         CollaborationAvatarGroup avatarGroup = new CollaborationAvatarGroup(userInfo, "chat");
         avatarGroup.setMaxItemsVisible(4);
         avatarGroup.addClassNames(LumoUtility.Width.AUTO);
@@ -174,15 +170,15 @@ public class ChatroomsView extends HorizontalLayout {
 
         // messages container
         HorizontalLayout msgInputBtnAddFileContainer = new HorizontalLayout();
-        msgInputBtnAddFileContainer.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.FlexDirection.ROW, LumoUtility.Width.AUTO, LumoUtility.AlignItems.CENTER, Padding.SMALL);
-        msgInputBtnAddFileContainer.setJustifyContentMode(JustifyContentMode.EVENLY);
+        msgInputBtnAddFileContainer.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.FlexDirection.ROW, LumoUtility.AlignItems.CENTER, Padding.SMALL);
+        msgInputBtnAddFileContainer.setMaxWidth(chatContainer.getWidth());
+
+        msgInputBtnAddFileContainer.add(dropDisabledSingleFileUpload, input);
 
         // todo: add interrupt encryption
         ProgressBar progressBar = new ProgressBar(0, 1, 0);
 
         chatContainer.add(list, msgInputBtnAddFileContainer, progressBar);
-
-        msgInputBtnAddFileContainer.add(dropDisabledSingleFileUpload, input);
 
         add(chatContainer, side);
         setSizeFull();
@@ -190,26 +186,50 @@ public class ChatroomsView extends HorizontalLayout {
 
         // Change the topic id of the chat when a new tab is selected
         tabs.addSelectedChangeListener(event -> {
-            currentChat = ((ChatTab) event.getSelectedTab()).getChatInfo();
-            list.setTopic(currentChat.getCollaborationTopic());
+            if (tabs.getComponentCount() != 0) {
+                currentChat = ((ChatTab) event.getSelectedTab()).getChatInfo();
+                list.setTopic(currentChat.getCollaborationTopic());
+            }
+            else {
+                currentChat = null;
+                list.setTopic("");
+                setMsgInputContainerAndProgressBarVisible(msgInputBtnAddFileContainer, progressBar, false);
+//                msgInputBtnAddFileContainer.setVisible(false);
+//                progressBar.setVisible(false);
+            }
         });
     }
 
-    private ChatTab createTab(ChatInfo chat) {
-        ChatTab tab = new ChatTab(chat);
-        tab.addClassNames(LumoUtility.JustifyContent.BETWEEN);
+    private Tabs createTabs(ChatroomsView.ChatInfo[] chats) {
+        tabs = new Tabs();
+        for (ChatInfo chat : chats) {
+            ChatTab tab = new ChatTab(chat);
+            tab.addClassNames(LumoUtility.JustifyContent.BETWEEN);
 
-//        Span badge = new Span();
-//        badge.getElement().getThemeList().add("badge small contrast");
-        tab.add(new Span("# " + chat.name));
+            tab.add(new Span("# " + chat.name));
 
-        // todo: problem with all tabs closed
-        Button buttonCloseTab = new Button(new Icon("lumo", "cross"),
-                (e) -> tab.removeFromParent());
-        buttonCloseTab.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        tab.add(buttonCloseTab);
+            // todo: problem with all tabs closed
+            Button buttonCloseTab = new Button(new Icon("lumo", "cross"),
+                    (e) -> {
+                        tabs.remove(tab);
+                        int countOfChildrenTabs = tabs.getComponentCount();
+                        if (countOfChildrenTabs != 0) {
+                            tabs.setSelectedIndex(0);
+                        }
+                    });
+            buttonCloseTab.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+            tab.add(buttonCloseTab);
+            tabs.add(tab);
+        }
+        tabs.setOrientation(Tabs.Orientation.VERTICAL);
+        tabs.addClassNames(LumoUtility.Flex.GROW, LumoUtility.Flex.SHRINK, LumoUtility.Overflow.HIDDEN);
+        return tabs;
+    }
 
-        return tab;
+    private void setMsgInputContainerAndProgressBarVisible(HorizontalLayout msgInputBtnAddFileContainer, ProgressBar progressBar, boolean isVisible) {
+        msgInputBtnAddFileContainer.setVisible(isVisible);
+        progressBar.setVisible(isVisible);
+
     }
 
     private VerticalLayout createDialogLayout() {
