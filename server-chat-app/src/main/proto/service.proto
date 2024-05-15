@@ -14,11 +14,12 @@ Case 2: rpc DisconnectUser(LoginRequest) returns(Empty);
 Клиент отсоединяется. Отправляется как предсмертный хрип.
 client -> server: client_login
 
-Case 3: rpc AddChatRoom(AddChatRoomRequest) returns (AddChatRoomResponse);
+Case 3: rpc InitChatRoom(InitChatRoomRequest) returns (InitChatRoomResponse);
 Клиент1 хочет создать комнату с клиентом2.
 client1 -> server : client1_login, client2_login, algorithm
-server -> client1 : algorithm, encryption_mode, padding_mode, (init_vector), kafkaTopicIn, kafkaTopicOut, P -- число для Диффи-Хэлмана
-server -> client2 : algorithm, encryption_mode, padding_mode, (init_vector), kafkaTopicIn, kafkaTopicOut, P -- число для Диффи-Хэлмана
+server -> client1 : client2_login, encryption_mode, padding_mode, (init_vector), kafkaTopicIn, kafkaTopicOut, P -- число для Диффи-Хэлмана
+client2 -> server :
+server -> client2 : client1_login, algorithm, encryption_mode, padding_mode, (init_vector), kafkaTopicIn, kafkaTopicOut, P -- число для Диффи-Хэлмана
 Сервер добавляет объект {client1, client2, topicIn1 = kafka topic in for client1, topicIn2 = kafka topic in for client2}
 (предполагается, что на сервере лежит коллекция таких объектов)
 Дальше выполняются rpc ExchangeNumber(DiffieHellmanPassToServerRequest) returns (Empty);
@@ -50,74 +51,74 @@ server -> client1 : KafkaTopicIn, KafkaTopicOut
 На сервере создаётся объект {client1, client2, topicIn1 = kafka topic in for client1, topicIn2 = kafka topic in for client2}
 */
 
-service ChatService {
-    /*  -------------------------------- CONNECT/DISCONNECT -------------------------------- */
-    rpc ConnectUser(LoginRequest) returns (HelloResponse);
-    rpc DisconnectUser(LoginRequest) returns(Empty);
-
-    /*  -------------------------------- ADD/REMOVE NEW CHAT ROOM --------------------------------- */
-    rpc AddChatRoom(AddChatRoomRequest) returns (AddChatRoomResponse);
-    rpc RemoveChatRoom(RemoveChatRoomRequest) returns (Empty);
-
-    /*  ------------------------- CONNECT/DISCONNECT TO CHAT ROOM  ------------------------- */
-    rpc ConnectChatRoom(ChatRoomConnectionRequest) returns (ConnectRoomResponse);
-    rpc DisconnectChatRoom(ChatRoomConnectionRequest) returns (Empty);
-
-    /*  ---------------------------------- DIFFIE-HELLMAN ---------------------------------- */
-    rpc ExchangeNumber(DiffieHellmanPassToServerRequest) returns (Empty);
-}
-
-/*  -------------------------------- MESSAGES -------------------------------- */
-message Empty{}
-
-message LoginRequest{
-    string login = 1;
-}
-
-message HelloResponse {
-    string g = 1;
-}
-
-message AddChatRoomRequest {
-    string login_own = 1;
-    string login_other = 2;
-    string algorithm = 3;
-}
-
-message AddChatRoomResponse {
-    string login_companion = 1;
-    string algorithm = 2;
-    string encryption_mode = 3;
-    string padding_mode = 4;
-    string init_vector = 5;
-    string topic_in = 6;
-    string topic_out = 7;
-    string diffie_hellman_p = 8;
-}
-
-message RemoveChatRoomRequest {
-    string login_own = 1;
-    string login_other = 2;
-}
-
-message ChatRoomConnectionRequest {
-    string login_own = 1;
-    string login_other = 2;
-}
-
-message ConnectRoomResponse {
-    string topic_in = 1;
-    string topic_out = 2;
-}
-
-message DiffieHellmanPassToServerRequest {
-    string login_own = 1;
-    string login_other = 2;
-    string diffie_hellman_number = 3; // A = G^a mod P
-}
-
-// optional?
-message DiffieHellmanPassToClientRequest {
-    string login_companion = 1;
-    string diffie_hellman_number = 2;
-}
+//service AbobaService {
+//    /*  -------------------------------- CONNECT/DISCONNECT -------------------------------- */
+//    rpc ConnectUser(LoginRequest) returns (HelloResponse);
+//    rpc DisconnectUser(LoginRequest) returns(Empty);
+//
+//    /*  -------------------------------- ADD/REMOVE NEW CHAT ROOM --------------------------------- */
+//    rpc InitChatRoom(InitChatRoomRequest) returns (InitChatRoomResponse);
+//    rpc RemoveChatRoom(RemoveChatRoomRequest) returns (Empty);
+//
+//    /*  ------------------------- CONNECT/DISCONNECT TO CHAT ROOM  ------------------------- */
+//    rpc ConnectChatRoom(ChatRoomConnectionRequest) returns (ConnectRoomResponse);
+//    rpc DisconnectChatRoom(ChatRoomConnectionRequest) returns (Empty);
+//
+//    /*  ---------------------------------- DIFFIE-HELLMAN ---------------------------------- */
+//    rpc ExchangeNumber(DiffieHellmanPassToServerRequest) returns (Empty);
+//}
+//
+///*  -------------------------------- MESSAGES -------------------------------- */
+//message Empty{}
+//
+//message LoginRequest{
+//    string login = 1;
+//}
+//
+//message HelloResponse {
+//    string g = 1;
+//}
+//
+//message InitChatRoomRequest {
+//    string login_own = 1;
+//    string login_other = 2;
+//    string algorithm = 3;
+//}
+//
+//message InitChatRoomResponse {
+//    string login_companion = 1;
+//    string algorithm = 2;
+//    string encryption_mode = 3;
+//    string padding_mode = 4;
+//    string init_vector = 5;
+//    string topic_in = 6;
+//    string topic_out = 7;
+//    string diffie_hellman_p = 8;
+//}
+//
+//message RemoveChatRoomRequest {
+//    string login_own = 1;
+//    string login_other = 2;
+//}
+//
+//message ChatRoomConnectionRequest {
+//    string login_own = 1;
+//    string login_other = 2;
+//}
+//
+//message ConnectRoomResponse {
+//    string topic_in = 1;
+//    string topic_out = 2;
+//}
+//
+//message DiffieHellmanPassToServerRequest {
+//    string login_own = 1;
+//    string login_other = 2;
+//    string diffie_hellman_number = 3; // A = G^a mod P
+//}
+//
+//// optional?
+//message DiffieHellmanPassToClientRequest {
+//    string login_companion = 1;
+//    string diffie_hellman_number = 2;
+//}

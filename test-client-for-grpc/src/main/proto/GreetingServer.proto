@@ -1,50 +1,50 @@
-syntax = "proto3";
-
-option java_multiple_files = true;
-option java_package = "ru.mai";
-option java_outer_classname = "ChatProto";
-option objc_class_prefix = "HLW";
-
-package ru.mai;
-
-service ChatService {
-    /*  -------------------------------- CONNECT/DISCONNECT -------------------------------- */
-    rpc connectUser(UserInfo) returns (ConnectMessage){}
-    rpc disconnectUser(UserInfo) returns(DisconnectMessage){}
-
-    /*  -------------------------------- SENDING MESSAGES -------------------------------- */
-    rpc sendBroadcastMsg(MessageText) returns (Empty){}
-    rpc sendPrivateMsg(PrivateMessageText) returns (Empty){}
-
-    /*  -------------------------------- GETTING MESSAGES -------------------------------- */
-    rpc syncMessages(UserInfo) returns (stream MessageText){}
-
-    rpc syncUserList(Empty) returns (stream UserInfo){}
-
-}
-/*  -------------------------------- MESSAGES -------------------------------- */
-message Empty{}
-
-message PrivateMessageText{
-    MessageText message_text = 1;
-    string receiver = 2;
-}
-
-message MessageText{
-    string text = 1;
-    string sender = 2;
-}
-
-message UserInfo{
-    string name = 1;
-}
-
-message ConnectMessage{
-    bool is_connected = 1;
-    string username = 2;
-}
-
-message DisconnectMessage{
-    bool is_disconnected = 1;
-    string username = 2;
-}
+//syntax = "proto3";
+//
+//option java_multiple_files = true;
+//option java_package = "ru.mai";
+//option java_outer_classname = "ChatProto";
+//option objc_class_prefix = "HLW";
+//
+//package ru.mai;
+//
+//service ChatService {
+//    /*  -------------------------------- CONNECT/DISCONNECT -------------------------------- */
+//    rpc connectUser(UserInfo) returns (ConnectMessage){}
+//    rpc disconnectUser(UserInfo) returns(DisconnectMessage){}
+//
+//    /*  -------------------------------- SENDING MESSAGES -------------------------------- */
+//    rpc sendBroadcastMsg(MessageText) returns (Empty){}
+//    rpc sendPrivateMsg(PrivateMessageText) returns (Empty){}
+//
+//    /*  -------------------------------- GETTING MESSAGES -------------------------------- */
+//    rpc syncMessages(UserInfo) returns (stream MessageText){}
+//
+//    rpc syncUserList(Empty) returns (stream UserInfo){}
+//
+//}
+///*  -------------------------------- MESSAGES -------------------------------- */
+//message Empty{}
+//
+//message PrivateMessageText{
+//    MessageText message_text = 1;
+//    string receiver = 2;
+//}
+//
+//message MessageText{
+//    string text = 1;
+//    string sender = 2;
+//}
+//
+//message UserInfo{
+//    string name = 1;
+//}
+//
+//message ConnectMessage{
+//    bool is_connected = 1;
+//    string username = 2;
+//}
+//
+//message DisconnectMessage{
+//    bool is_disconnected = 1;
+//    string username = 2;
+//}

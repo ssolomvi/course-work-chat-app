@@ -19,6 +19,8 @@ dependencies {
     implementation 'io.grpc:grpc-all:1.62.2'
     implementation 'javax.annotation:javax.annotation-api:1.3.2'
 
+    // logging
+    implementation 'ch.qos.logback:logback-classic:1.4.5'
 }
 
 // to tell IDEA where generated code for gRPC will be

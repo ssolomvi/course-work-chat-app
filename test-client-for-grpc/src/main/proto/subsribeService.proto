@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option java_package = "ru.mai";
+
+package ru.mai;
+
+import "google/protobuf/empty.proto";
+
+message Message {
+    string content = 1;
+}
+
+message Subscription {
+    // Optional field to specify channel/topic for subscription (if needed)
+    string topic = 1;
+}
+
+service Publisher {
+    rpc PublishMessage (Message) returns (google.protobuf.Empty);
+    rpc Subscribe (Subscription) returns (stream Message);
+}

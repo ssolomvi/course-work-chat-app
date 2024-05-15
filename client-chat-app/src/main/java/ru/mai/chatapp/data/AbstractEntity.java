@@ -6,9 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Version;
-import lombok.Getter;
 
-@Getter
 @MappedSuperclass
 public abstract class AbstractEntity {
 
@@ -23,6 +21,10 @@ public abstract class AbstractEntity {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getId() {
+        return id;
     }
 
     @Override
