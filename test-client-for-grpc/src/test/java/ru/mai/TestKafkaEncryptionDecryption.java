@@ -9,6 +9,7 @@ import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.KafkaContainer;
@@ -21,13 +22,17 @@ import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.encryption_context.SymmetricEncryptionContextImpl;
 import ru.mai.encryption_mode.EncryptionModeEnum;
 import ru.mai.encryption_padding_mode.PaddingModeEnum;
+import ru.mai.kafka.KafkaContext;
 import ru.mai.kafka.KafkaReader;
 import ru.mai.kafka.KafkaWriter;
+import ru.mai.kafka.impl.KafkaContextImpl;
 import ru.mai.kafka.impl.KafkaReaderImpl;
 import ru.mai.kafka.impl.KafkaWriterImpl;
-import ru.mai.model.KafkaMessage;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,31 +58,11 @@ class TestKafkaEncryptionDecryption {
     private final int partitions = 3;
 //    private final Config config = ConfigFactory.load();
 
-    private KafkaReader kafkaReader;
-    private KafkaWriter kafkaWriter;
-
+    private KafkaContext kafkaContext;
     EncryptionContext context = new SymmetricEncryptionContextImpl(EncryptionModeEnum.ECB, PaddingModeEnum.ZEROES,
-                        new DES("abcdefg".getBytes(StandardCharsets.UTF_8)));
+            new DES("abcdefg".getBytes(StandardCharsets.UTF_8)));
 
     public static final byte[] testByteArr = ("""
-            The cat (Felis catus), commonly referred to as the domestic cat or house cat, is a small domesticated carnivorous
-            mammal. It is the only domesticed species in the family Felidae. Recent advances in archaeology and genetics have shown
-            that the domestication of the cat occurred in the Near East around 7500 BC. It is commonly kept as a house pet and farm
-            cat, but also ranges freely as a feral cat avoiding human contact. It is valued by humans for companionship and its
-            ability to kill vermin. Its retractable claws are adapted to killing small prey like mice and rats. It has a strong,
-            flexible body, quick reflexes, sharp teeth, and its night vision and sense of smell are well developed. It is a social
-            species, but a solitary hunter and a crepuscular predator. Cat communication includes vocalizations like meowing,
-            purring, trilling, hissing, growling, and grunting as well as cat body language. It can hear sounds too faint or too
-            high in frequency for human ears, such as those made by small mammals. It also secretes and perceives pheromones.
-            The cat (Felis catus), commonly referred to as the domestic cat or house cat, is a small domesticated carnivorous
-            mammal. It is the only domesticed species in the family Felidae. Recent advances in archaeology and genetics have shown
-            that the domestication of the cat occurred in the Near East around 7500 BC. It is commonly kept as a house pet and farm
-            cat, but also ranges freely as a feral cat avoiding human contact. It is valued by humans for companionship and its
-            ability to kill vermin. Its retractable claws are adapted to killing small prey like mice and rats. It has a strong,
-            flexible body, quick reflexes, sharp teeth, and its night vision and sense of smell are well developed. It is a social
-            species, but a solitary hunter and a crepuscular predator. Cat communication includes vocalizations like meowing,
-            purring, trilling, hissing, growling, and grunting as well as cat body language. It can hear sounds too faint or too
-            high in frequency for human ears, such as those made by small mammals. It also secretes and perceives pheromones.
             The cat (Felis catus), commonly referred to as the domestic cat or house cat, is a small domesticated carnivorous
             mammal. It is the only domesticed species in the family Felidae. Recent advances in archaeology and genetics have shown
             that the domestication of the cat occurred in the Near East around 7500 BC. It is commonly kept as a house pet and farm
@@ -91,11 +76,8 @@ class TestKafkaEncryptionDecryption {
 
     KafkaReader createKafkaReader() {
         return new KafkaReaderImpl(Map.of(
-//                ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092",
                 ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers(),
-//                ConsumerConfig.GROUP_ID_CONFIG, "test_group_consumer",
                 ConsumerConfig.GROUP_ID_CONFIG, "test_group_consumer",
-//                ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest"),
                 ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
                 "test_topic_in",
                 context);
@@ -122,8 +104,20 @@ class TestKafkaEncryptionDecryption {
 
         checkAndCreateRequiredTopics(adminClient, topics);
 
-        kafkaReader = createKafkaReader();
-        kafkaWriter = createKafkaWriter();
+        kafkaContext = new KafkaContextImpl(
+                Map.of(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers(),
+                        ConsumerConfig.GROUP_ID_CONFIG, "test_group_consumer",
+                        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
+                Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers(),
+                        ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString()),
+                TEST_TOPIC_IN,
+                TEST_TOPIC_IN,
+                context);
+    }
+
+    @AfterEach
+    void cleanEnvironment() throws Exception {
+        kafkaContext.close();
     }
 
     private AdminClient createAdminClient() {
@@ -143,6 +137,7 @@ class TestKafkaEncryptionDecryption {
                     try {
                         log.info("Topic not exist {}. Create topic {}", t, t);
                         adminClient.createTopics(List.of(new NewTopic(t, partitions, replicaFactor))).all().get(30, TimeUnit.SECONDS);
+//                        adminClient.createTopics(List.of(new NewTopic(t, partitions, replicaFactor).configs(Map.of("max.message.bytes", "9000")))).all().get(30, TimeUnit.SECONDS);
                     } catch (InterruptedException | TimeoutException | ExecutionException e) {
                         log.error("Error creating topic Kafka", e);
                     }
@@ -166,25 +161,44 @@ class TestKafkaEncryptionDecryption {
      * Проверяет возможность читать и писать из Kafka
      */
     @Test
-    void testKafkaWriteReadMessage() {
+    void testKafkaWriteReadByteArray() throws InterruptedException {
         log.info("Bootstrap.servers: {}", kafka.getBootstrapServers());
-        log.info("Sending message");
 
-//        KafkaMessage message = KafkaMessage.builder()
-//                .messageId(UUID.randomUUID())
-//                .value("aboba".getBytes(StandardCharsets.UTF_8))
-//                .fileName("")
-//                .isLast(true).build();
-
-
-//        String message = "aboba";
-
-        kafkaWriter.send(testByteArr);
+        kafkaContext.send(testByteArr);
         log.info("Sent message");
 
         log.info("Consumer start reading");
-        kafkaReader.processing();
-//            getConsumerRecordsOutputTopic(kafkaReader, 10, 1);
+        executorForTest.submit(() -> {
+            try {
+                kafkaContext.startListening();
+            } catch (IOException e) {
+                log.error("I/O exception happened, ", e);
+                throw new RuntimeException(e);
+            }
+        });
+        Thread.sleep(10000);
+        //            getConsumerRecordsOutputTopic(kafkaReader, 10, 1);
+    }
+
+    @Test
+    void testKafkaWriteReadFile() throws IOException, InterruptedException {
+        log.info("Bootstrap.servers: {}", kafka.getBootstrapServers());
+
+        Path inputFile = Paths.get("src/test/resources/veryBigCat.txt");
+//        Path inputFile = Paths.get("src/test/resources/catBig.txt");
+        kafkaContext.send(inputFile);
+        log.info("Sent message");
+
+        log.info("Consumer start reading");
+        executorForTest.submit(() -> {
+            try {
+                kafkaContext.startListening();
+            } catch (IOException e) {
+                log.error("I/O exception happened, ", e);
+                throw new RuntimeException(e);
+            }
+        });
+        Thread.sleep(60000);
     }
 
 }

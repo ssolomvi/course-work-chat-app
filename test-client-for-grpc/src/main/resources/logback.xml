@@ -9,7 +9,7 @@
         </encoder>
     </appender>
 
-    <logger name="ru.mai.lessons.rpks" level="DEBUG" additivity="false">
+    <logger name="ru.mai" level="DEBUG" additivity="false">
         <appender-ref ref="CONSOLE"/>
     </logger>
 

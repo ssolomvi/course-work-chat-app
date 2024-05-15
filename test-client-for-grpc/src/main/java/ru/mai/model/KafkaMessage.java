@@ -13,7 +13,7 @@ import java.util.UUID;
 public class KafkaMessage {
     private UUID messageId; // generated
     private byte[] value; // encrypted data
-    private Boolean isLast; // if send partially
     private String fileName; // if is a file
-    private Integer index;
+    private Integer numberOfPartitions;
+    private Integer currIndex;
 }
