@@ -25,7 +25,7 @@ public class KafkaWriterImpl implements KafkaWriter {
     private final KafkaProducer<String, KafkaMessage> kafkaProducer;
     private final String topic;
     private final EncryptionContext context;
-    private static final Integer FILE_PAGE_SIZE = 64;
+    private static final Integer FILE_PAGE_SIZE = 4092;
 
     public KafkaWriterImpl(Map<String, Object> kafkaProducerConfig, String topic, EncryptionContext context) {
         this.kafkaProducer = createProducer(kafkaProducerConfig);

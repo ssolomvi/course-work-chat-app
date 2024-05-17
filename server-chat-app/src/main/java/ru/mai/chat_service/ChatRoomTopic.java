@@ -1,4 +1,4 @@
-//package ru.mai.chat_service;
+package ru.mai.chat_service;//package ru.mai.chat_service;
 //
 //import java.util.Objects;
 //

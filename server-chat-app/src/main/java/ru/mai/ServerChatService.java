@@ -1,4 +1,4 @@
-//package ru.mai;
+package ru.mai;//package ru.mai;
 //
 //import io.grpc.ManagedChannel;
 //import io.grpc.Status;

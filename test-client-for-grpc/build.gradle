@@ -10,14 +10,7 @@ repositories {
     mavenCentral()
 }
 
-compileJava {
-    sourceCompatibility '17'
-    targetCompatibility '17'
-}
-
 dependencies {
-    implementation project(path: ':server-chat-app')
-
     // protobuf, gRPC
     implementation 'com.google.protobuf:protobuf-java:4.26.1'
     implementation 'io.grpc:grpc-all:1.62.2'
@@ -35,8 +28,8 @@ dependencies {
     // configuration
     implementation 'com.typesafe:config:1.4.2'
 
-    // cryptography
-    implementation project(path: ':cryptograpthy-starter')
+    // cryptography-starter
+    implementation project(path: ':cryptography-starter')
 
     // code generator
     compileOnly 'org.projectlombok:lombok:1.18.26'
@@ -50,11 +43,9 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok:1.18.28'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.28'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
-
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
 }
-
 
 // to tell IDEA where generated code for gRPC will be
 sourceSets {

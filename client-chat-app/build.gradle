@@ -1,53 +1,52 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.2.5'
-	id 'io.spring.dependency-management' version '1.1.4'
-	id 'com.vaadin' version '24.3.11'
+    id 'java'
+    id 'org.springframework.boot' version '3.2.5'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'com.vaadin' version '24.3.11'
 }
 
 group = 'ru.mai'
-version = '0.0.1-SNAPSHOT'
-
-java {
-	sourceCompatibility = '17'
-}
+version = '1.0-SNAPSHOT'
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
 ext {
-	set('vaadinVersion', "24.3.11")
+    set('vaadinVersion', "24.3.11")
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	implementation 'org.springframework.boot:spring-boot-starter-security:3.2.4'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security:3.2.4'
 
-	implementation 'com.vaadin:vaadin-spring-boot-starter'
-	implementation 'com.vaadin:vaadin-core:24.3.11'
-	implementation 'com.vaadin:collaboration-engine:6.2.1'
-	implementation 'com.vaadin:vaadin-maven-plugin:24.3.11'
+    implementation 'com.vaadin:vaadin-spring-boot-starter'
+    implementation 'com.vaadin:vaadin-core:24.3.11'
+    implementation 'com.vaadin:collaboration-engine:6.2.1'
+    implementation 'com.vaadin:vaadin-maven-plugin:24.3.11'
 
 //	runtimeOnly 'com.h2database:h2:2.2.224'
-	implementation("org.postgresql:postgresql:42.2.24")
+    implementation("org.postgresql:postgresql:42.2.24")
 
-	// lombok
-	compileOnly 'org.projectlombok:lombok:1.18.30'
+    // lombok
+    compileOnly 'org.projectlombok:lombok:1.18.30'
 
-	implementation 'org.springframework.kafka:spring-kafka'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testImplementation 'org.springframework.kafka:spring-kafka-test'
+    implementation 'org.springframework.kafka:spring-kafka'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
 }
 
 dependencyManagement {
-	imports {
-		mavenBom "com.vaadin:vaadin-bom:${vaadinVersion}"
-	}
+    imports {
+        mavenBom "com.vaadin:vaadin-bom:${vaadinVersion}"
+    }
 }
 
-tasks.named('test') {
-	useJUnitPlatform()
+test {
+    useJUnitPlatform()
 }

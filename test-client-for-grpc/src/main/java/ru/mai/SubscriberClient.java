@@ -1,4 +1,4 @@
-//package ru.mai;
+package ru.mai;//package ru.mai;
 //
 //import com.google.protobuf.Empty;
 //import io.grpc.ManagedChannel;

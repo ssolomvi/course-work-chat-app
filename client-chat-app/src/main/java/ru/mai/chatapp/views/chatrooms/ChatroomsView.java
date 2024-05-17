@@ -200,7 +200,7 @@ public class ChatroomsView extends HorizontalLayout {
         });
     }
 
-    private Tabs createTabs(ChatroomsView.ChatInfo[] chats) {
+    private Tabs createTabs(ChatInfo[] chats) {
         tabs = new Tabs();
         for (ChatInfo chat : chats) {
             ChatTab tab = new ChatTab(chat);
