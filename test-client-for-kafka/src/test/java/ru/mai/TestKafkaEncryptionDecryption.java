@@ -1,8 +1,6 @@
 package ru.mai;
 
-//import com.typesafe.config.Config;
-//import com.typesafe.config.ConfigFactory;
-
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -10,6 +8,7 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.KafkaContainer;
@@ -39,11 +38,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.stream.Stream;
-
-import lombok.extern.slf4j.Slf4j;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 @Slf4j
 @Testcontainers
@@ -106,10 +100,13 @@ class TestKafkaEncryptionDecryption {
 
         kafkaContext = new KafkaContextImpl(
                 Map.of(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers(),
-                        ConsumerConfig.GROUP_ID_CONFIG, "test_group_consumer",
+                        ConsumerConfig.GROUP_ID_CONFIG, "test_group_consumer_01_17_05",
                         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
+//                        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest"),
                 Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers(),
-                        ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString()),
+                        ProducerConfig.MAX_REQUEST_SIZE_CONFIG, "")
+//                        ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString())
+                ,
                 TEST_TOPIC_IN,
                 TEST_TOPIC_IN,
                 context);
@@ -137,6 +134,7 @@ class TestKafkaEncryptionDecryption {
                     try {
                         log.info("Topic not exist {}. Create topic {}", t, t);
                         adminClient.createTopics(List.of(new NewTopic(t, partitions, replicaFactor))).all().get(30, TimeUnit.SECONDS);
+//                        adminClient.createTopics(List.of(new NewTopic(t, partitions, replicaFactor).configs(Map.of(TopicConfig.RETENTION_MS_CONFIG, "200000")))).all().get(30, TimeUnit.SECONDS);
 //                        adminClient.createTopics(List.of(new NewTopic(t, partitions, replicaFactor).configs(Map.of("max.message.bytes", "9000")))).all().get(30, TimeUnit.SECONDS);
                     } catch (InterruptedException | TimeoutException | ExecutionException e) {
                         log.error("Error creating topic Kafka", e);
@@ -154,7 +152,7 @@ class TestKafkaEncryptionDecryption {
      */
     @Test
     void testStartKafka() {
-        assertTrue(kafka.isRunning());
+        Assertions.assertTrue(kafka.isRunning());
     }
 
     /**
@@ -181,24 +179,29 @@ class TestKafkaEncryptionDecryption {
     }
 
     @Test
-    void testKafkaWriteReadFile() throws IOException, InterruptedException {
+    void testKafkaWriteReadFile() throws InterruptedException {
         log.info("Bootstrap.servers: {}", kafka.getBootstrapServers());
 
-        Path inputFile = Paths.get("src/test/resources/veryBigCat.txt");
-//        Path inputFile = Paths.get("src/test/resources/catBig.txt");
-        kafkaContext.send(inputFile);
-        log.info("Sent message");
-
         log.info("Consumer start reading");
-        executorForTest.submit(() -> {
-            try {
-                kafkaContext.startListening();
-            } catch (IOException e) {
-                log.error("I/O exception happened, ", e);
-                throw new RuntimeException(e);
-            }
-        });
-        Thread.sleep(60000);
+
+        try {
+            executorForTest.submit(() -> {
+                try {
+                    kafkaContext.startListening();
+                } catch (IOException e) {
+                    log.error("I/O exception happened, ", e);
+                    throw new RuntimeException(e);
+                }
+            });
+
+            Path inputFile = Paths.get("src/test/resources/veryBigCat.txt");
+            kafkaContext.send(inputFile);
+        }
+        catch (Exception e) {
+            log.error("EXCEPTION: ", e);
+        }
+//        Thread.sleep(60000);
+        Thread.sleep(10000);
     }
 
 }

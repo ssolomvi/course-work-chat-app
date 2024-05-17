@@ -3,4 +3,5 @@ include 'cryptography-starter'
 include 'client-chat-app'
 include 'server-chat-app'
 include 'test-client-for-grpc'
+include 'test-client-for-kafka'
 

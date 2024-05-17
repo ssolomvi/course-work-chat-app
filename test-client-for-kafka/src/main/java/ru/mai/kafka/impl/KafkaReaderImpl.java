@@ -1,18 +1,13 @@
 package ru.mai.kafka.impl;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.kafka.KafkaReader;
 import ru.mai.kafka.serialization.KafkaMessageDeserializer;
-import ru.mai.kafka.serialization.KafkaMessageSerializer;
 import ru.mai.model.KafkaMessage;
 import ru.mai.utils.Pair;
 
@@ -20,7 +15,10 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -34,6 +32,7 @@ public class KafkaReaderImpl implements KafkaReader {
 
     // (Integer) -- max index?
     private final HashMap<UUID, Pair<String, Integer>> files = new HashMap<>();
+    private static final Integer FILE_PAGE_SIZE = 4092;
 
 
     public KafkaReaderImpl(Map<String, Object> kafkaConsumerConfigs,
@@ -56,14 +55,13 @@ public class KafkaReaderImpl implements KafkaReader {
     @Override
     public void processing() throws IOException {
         log.info("Start reading Kafka topic: {}", topic);
-
-        // todo: not in prod
-        boolean isLast = false;
+        boolean isLast = false; // todo: not in prod
 
         while (true) {
             ConsumerRecords<String, KafkaMessage> consumerRecords = kafkaConsumer.poll(Duration.ofMillis(100));
 
             for (ConsumerRecord<String, KafkaMessage> consumerRecord : consumerRecords) {
+                log.info("Partition number: {}, Record value:\n{}", consumerRecord.partition(), consumerRecord.value());
                 KafkaMessage msg = consumerRecord.value();
 
                 if (msg.getFileName().isEmpty()) {
@@ -78,7 +76,6 @@ public class KafkaReaderImpl implements KafkaReader {
                 break;
             }
         }
-//        get message from kafka reader, decrypt it, return it
     }
 
     @Override
@@ -97,7 +94,7 @@ public class KafkaReaderImpl implements KafkaReader {
         try (RandomAccessFile rnd = new RandomAccessFile(msg.getFileName(), "rw")) {
             log.info("File {} opened as RandomAccessFile", msg.getFileName());
             byte[] toWrite = msg.getValue();
-            rnd.seek((long) msg.getCurrIndex() * toWrite.length);
+            rnd.seek((long) msg.getCurrIndex() * FILE_PAGE_SIZE);
             rnd.write(toWrite);
 
             if (files.containsKey(msg.getMessageId())) {
@@ -110,9 +107,12 @@ public class KafkaReaderImpl implements KafkaReader {
             }
 
             if (files.get(msg.getMessageId()).getValue() == 0) {
+                // todo: for debug, testing
                 context.decrypt(Path.of(msg.getFileName()), Path.of("TMP.txt"));
+                log.info("File TMP.txt READY!");
                 return true;
             }
+
         }
 
         return false;

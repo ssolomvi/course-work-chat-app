@@ -4,21 +4,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringSerializer;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.kafka.KafkaWriter;
 import ru.mai.kafka.serialization.KafkaMessageSerializer;
 import ru.mai.model.KafkaMessage;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 @Slf4j
 public class KafkaWriterImpl implements KafkaWriter {
@@ -36,7 +35,8 @@ public class KafkaWriterImpl implements KafkaWriter {
 
 
     private KafkaProducer<String, KafkaMessage> createProducer(Map<String, Object> kafkaProducerConfig) {
-        int maxRequestSize = FILE_PAGE_SIZE >= 1000 ? FILE_PAGE_SIZE + FILE_PAGE_SIZE / 100 : FILE_PAGE_SIZE + 10;
+        // 124 due to KafkaMessage structure: UUID - 16 bytes, int x2 = 8 bytes, 100 bytes for filename
+        int maxRequestSize = FILE_PAGE_SIZE >= 2000 ? FILE_PAGE_SIZE + FILE_PAGE_SIZE / 10 : FILE_PAGE_SIZE + 124;
         String maxRequestSizeConfig = Integer.toString(maxRequestSize);
         if (kafkaProducerConfig.containsKey(ProducerConfig.MAX_REQUEST_SIZE_CONFIG)) {
             if (!Objects.equals(kafkaProducerConfig.get(ProducerConfig.MAX_REQUEST_SIZE_CONFIG), maxRequestSizeConfig)) {
@@ -59,7 +59,19 @@ public class KafkaWriterImpl implements KafkaWriter {
     @Override
     public void send(KafkaMessage message) {
         message.setValue(context.encrypt(message.getValue()));
-        kafkaProducer.send(new ProducerRecord<>(topic, message));
+
+        Future<RecordMetadata> response = kafkaProducer.send(new ProducerRecord<>(topic, message));
+
+        Optional.ofNullable(response).ifPresent(rsp ->
+                {
+                    try {
+                        log.info("Message send: {}: {}", rsp.get(), message.getValue());
+                    } catch (InterruptedException | ExecutionException e) {
+                        log.error("Error reading response: ", e);
+                        Thread.currentThread().interrupt();
+                    }
+                }
+        );
     }
 
     @Override
@@ -79,18 +91,29 @@ public class KafkaWriterImpl implements KafkaWriter {
             byte[] buffer = new byte[FILE_PAGE_SIZE];
             int currPartition = 0;
             int readBytes;
-            int currFilePos = 0;
 
             while ((readBytes = inputStream.read(buffer)) != -1) {
-                if (readBytes + currFilePos >= fileSize) {
+                if (readBytes != FILE_PAGE_SIZE) {
                     byte[] tmpArr = new byte[readBytes];
                     System.arraycopy(buffer, 0, tmpArr, 0, readBytes);
                     buffer = tmpArr;
                 }
 
-                KafkaMessage message = new KafkaMessage(id, buffer, fileName, numberOfPartitions, currPartition++);
-                kafkaProducer.send(new ProducerRecord<>(topic, message));
-                log.info("Sent a part to topic: {}, current index: {}, message:\n{}", topic, currPartition, message);
+                KafkaMessage message = new KafkaMessage(id, fileName, numberOfPartitions, currPartition++, buffer);
+
+                Future<RecordMetadata> response = kafkaProducer.send(new ProducerRecord<>(topic, message));
+
+                Optional.ofNullable(response).ifPresent(rsp ->
+                        {
+                            try {
+                                log.info("Sent: {}; to topic: {}, message:\n{}", rsp.get(), topic, message);
+                            } catch (InterruptedException | ExecutionException e) {
+                                log.error("Error reading response: ", e);
+                                Thread.currentThread().interrupt();
+                            }
+                        }
+                );
+
             }
         }
     }
@@ -100,7 +123,8 @@ public class KafkaWriterImpl implements KafkaWriter {
         byte[] encrypted = context.encrypt(input);
 
         if (encrypted.length <= FILE_PAGE_SIZE) {
-            KafkaMessage message = new KafkaMessage(UUID.randomUUID(), encrypted, "", 1, 0);
+            KafkaMessage message = new KafkaMessage(UUID.randomUUID(), "", 1, 0, encrypted);
+            log.info("Sent byte array: {}", message);
             kafkaProducer.send(new ProducerRecord<>(topic, message));
         } else {
             log.error("Big length!");

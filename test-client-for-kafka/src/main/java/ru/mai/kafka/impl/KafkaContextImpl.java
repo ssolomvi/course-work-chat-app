@@ -56,16 +56,13 @@ public class KafkaContextImpl implements KafkaContext {
         String[] tmp = fileName.split("\\.");
 
         StringBuilder builder = new StringBuilder();
-        builder.append(msg.getParent().toString());
         builder.append(tmp[0]).append("_tmp").append(formatter.format(Instant.now())).append(".");
         for (int i = 1; i < tmp.length; i++) {
             builder.append(tmp[i]);
         }
 
         Path tmpFile = Paths.get(builder.toString());
-        // todo:
         log.debug("Passing sending message to kafkaWriter");
-        log.info("Passing sending message to kafkaWriter");
         writer.send(msg, tmpFile);
         Files.delete(tmpFile);
     }
