@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "ru.mai";
+
+package ru.mai;
+
+service ChatService {
+    /*  -------------------------------- HELLO -------------------------------- */
+    rpc Connect (Login) returns (ConnectResponse);
+    rpc Disconnect(Login) returns (Empty);
+
+    rpc ConnectWithRooms (stream ChatRoomLogins) returns (stream ConnectResponseRoom);
+    rpc DisconnectWithRooms (stream ChatRoomLogins) returns (Empty);
+
+    /*  -------------------------------- INIT / DELETE CHAT ROOM -------------------------------- */
+    rpc InitRoom (InitRoomRequest) returns (InitRoomResponse);
+    rpc CheckForInitRoomRequest (Empty) returns (CompanionLogin);
+
+    rpc PassDiffieHellmanNumber (DiffieHellmanNumber) returns (Empty);
+    rpc AnyDiffieHellmanNumber (Empty) returns (DiffieHellmanNumber);
+
+    rpc DeleteRoom (ChatRoomLogins) returns (Empty);
+    rpc CheckForDeletedRoom (ChatRoomLogins) returns (CompanionLogin);
+
+    /*  -------------------------------- CONNECT/DISCONNECT -------------------------------- */
+//    rpc ConnectRoom (ChatRoom) returns (CompanionLogin); // returns status (if connected, not empty)
+//    rpc AnyConnectRoom (ChatRoom) returns (CompanionLogin);
+//
+//    rpc DisconnectRoom (ChatRoom) returns (Empty);
+//    rpc AnyDisconnectedRoom (ChatRoom) returns (CompanionLogin);
+
+    /*  -------------------------------- SENDING MESSAGES -------------------------------- */
+    rpc SendMessage (MessageWithLogins) returns (Empty);
+
+    rpc AnyMessages (ChatRoomLogins) returns (stream MessageWithLogins);
+}
+
+/*  -------------------------------- MESSAGES -------------------------------- */
+
+message Empty {}
+
+message Login {
+    string login = 1;
+}
+
+message ConnectResponse {
+    string diffie_hellman_g = 1;
+}
+
+message ConnectResponseRoom {
+    string diffie_hellman_g = 1;
+    bool companion_connected = 2;
+}
+
+message InitRoomRequest {
+    string own_login = 1;
+    string companion_login = 2;
+    string algorithm = 3;
+}
+
+message InitRoomResponse {
+    string companion_login = 1;
+    string algorithm = 2;
+    string encryption_mode = 3;
+    string padding_mode = 4;
+    string init_vector = 5;
+    string diffie_hellman_p = 6;
+}
+
+message DiffieHellmanNumber {
+    string own_login = 1;
+    string companion_login = 2;
+    string number = 3;
+}
+
+message CompanionLogin {
+    string companion_login = 1;
+}
+
+message ChatRoomLogins {
+    string own_login = 1;
+    string companion_login = 2;
+}
+
+message MessageWithLogins {
+    string own_login = 1;
+    string companion_login = 2;
+    string kafka_message = 3;
+}

@@ -3,13 +3,10 @@ package ru.mai;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 
-import java.io.IOException;
-
 public class Main {
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) {
         try {
             Server server = ServerBuilder.forPort(8080)
-                    .addService(new PublisherServer())
                     .build();
 
             server.start();
