@@ -7,30 +7,35 @@ package ru.mai;
 
 service ChatService {
     /*  -------------------------------- HELLO -------------------------------- */
-    rpc SayHello (Login) returns (HelloResponse);
-    rpc Disconnect(Login) returns (Empty);
+    rpc Connect (Login) returns (ConnectResponse);
+    rpc Disconnect (Login) returns (Empty);
+
+    rpc ConnectWithRooms (stream ChatRoomLogins) returns (stream CompanionStatus);
+    rpc DisconnectWithRooms (stream ChatRoomLogins) returns (Empty);
+
+    rpc CheckCompanionStatus(ChatRoomLogins) returns (CompanionStatus);
 
     /*  -------------------------------- INIT / DELETE CHAT ROOM -------------------------------- */
     rpc InitRoom (InitRoomRequest) returns (InitRoomResponse);
-    rpc CheckForInitRoomRequest (Empty) returns (CompanionLogin);
+    rpc CheckForInitRoomRequest (Login) returns (stream InitRoomResponse);
 
-    rpc PassDiffieHellmanNumber(DiffieHellmanNumber) returns (Empty);
-    rpc AnyDiffieHellmanNumber(Empty) returns (DiffieHellmanNumber);
+    rpc PassDiffieHellmanNumber (stream DiffieHellmanNumber) returns (Empty);
+    rpc AnyDiffieHellmanNumber (Login) returns (stream DiffieHellmanNumber);
 
-    rpc DeleteRoom (ChatRoom) returns (Empty);
-    rpc CheckForDeletedRoom (ChatRoom) returns (CompanionLogin);
+    rpc DeleteRoom (ChatRoomLogins) returns (CompanionStatus);
+    rpc CheckForDeletedRoom (Login) returns (stream CompanionStatus);
 
     /*  -------------------------------- CONNECT/DISCONNECT -------------------------------- */
-    rpc ConnectUser (ChatRoom) returns (CompanionLogin); // returns status (if connected, not empty)
-    rpc AnyConnectRoom(ChatRoom) returns (CompanionLogin);
-
-    rpc DisconnectUser (ChatRoom) returns (Empty);
-    rpc AnyDisconnectedRoom (ChatRoom) returns (CompanionLogin);
+    //    rpc ConnectRoom (ChatRoom) returns (CompanionLogin); // returns status (if connected, not empty)
+    //    rpc AnyConnectRoom (ChatRoom) returns (CompanionLogin);
+    //
+    //    rpc DisconnectRoom (ChatRoom) returns (Empty);
+    //    rpc AnyDisconnectedRoom (ChatRoom) returns (CompanionLogin);
 
     /*  -------------------------------- SENDING MESSAGES -------------------------------- */
-    rpc SendMessage (Message) returns (Empty);
+    rpc SendMessage (MessageWithLogins) returns (Empty);
 
-    rpc AnyMessages (ChatRoom) returns (stream Message);
+    rpc AnyMessages (ChatRoomLogins) returns (stream MessageWithLogins);
 }
 
 /*  -------------------------------- MESSAGES -------------------------------- */
@@ -41,8 +46,13 @@ message Login {
     string login = 1;
 }
 
-message HelloResponse {
+message ConnectResponse {
     string diffie_hellman_g = 1;
+}
+
+message CompanionStatus {
+    string companion_login = 1;
+    bool status = 2;
 }
 
 message InitRoomRequest {
@@ -66,16 +76,12 @@ message DiffieHellmanNumber {
     string number = 3;
 }
 
-message CompanionLogin {
-    string companion_login = 1;
-}
-
-message ChatRoom {
+message ChatRoomLogins {
     string own_login = 1;
     string companion_login = 2;
 }
 
-message Message {
+message MessageWithLogins {
     string own_login = 1;
     string companion_login = 2;
     string kafka_message = 3;
