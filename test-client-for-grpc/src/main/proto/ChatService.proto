@@ -7,11 +7,11 @@ package ru.mai;
 
 service ChatService {
     /*  -------------------------------- HELLO -------------------------------- */
-    rpc Connect (Login) returns (ConnectResponse);
-    rpc Disconnect (Login) returns (Empty);
+    rpc Connect (Login) returns (ConnectResponse); // works with blocking stub
+    rpc Disconnect (Login) returns (Empty); // works with blocking stub
 
     rpc ConnectWithRooms (stream ChatRoomLogins) returns (stream CompanionStatus);
-    rpc DisconnectWithRooms (stream ChatRoomLogins) returns (Empty);
+    rpc DisconnectWithRooms (stream ChatRoomLogins) returns (Empty); // edited
 
     rpc CheckCompanionStatus(ChatRoomLogins) returns (CompanionStatus);
 
@@ -19,7 +19,7 @@ service ChatService {
     rpc InitRoom (InitRoomRequest) returns (InitRoomResponse);
     rpc CheckForInitRoomRequest (Login) returns (stream InitRoomResponse);
 
-    rpc PassDiffieHellmanNumber (stream DiffieHellmanNumber) returns (Empty);
+    rpc PassDiffieHellmanNumber (stream DiffieHellmanNumber) returns (Empty); // edited
     rpc AnyDiffieHellmanNumber (Login) returns (stream DiffieHellmanNumber);
 
     rpc DeleteRoom (ChatRoomLogins) returns (CompanionStatus);

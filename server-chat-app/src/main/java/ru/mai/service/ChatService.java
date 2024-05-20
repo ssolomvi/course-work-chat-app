@@ -158,7 +158,6 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
     @Override
     public StreamObserver<ChatRoomLogins> disconnectWithRooms(StreamObserver<Empty> responseObserver) {
         return new StreamObserver<>() {
-
             @Override
             public void onNext(ChatRoomLogins room) {
                 String ownLogin = room.getOwnLogin();
@@ -191,8 +190,6 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
                 }
 
                 log.debug("User {} disconnected with companion {}", ownLogin, companionLogin);
-
-                responseObserver.onNext(Empty.getDefaultInstance());
             }
 
             @Override
@@ -202,6 +199,7 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
             @Override
             public void onCompleted() {
+                responseObserver.onNext(Empty.getDefaultInstance());
                 responseObserver.onCompleted();
             }
         };
@@ -300,8 +298,6 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
                 diffieHellmanNumbers.put(value.getCompanionLogin(), senders);
                 log.debug("User {} passed diffie-hellman number to {}", value.getOwnLogin(), value.getCompanionLogin());
-
-                responseObserver.onNext(Empty.getDefaultInstance());
             }
 
             @Override
@@ -311,6 +307,7 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
             @Override
             public void onCompleted() {
+                responseObserver.onNext(Empty.getDefaultInstance());
                 responseObserver.onCompleted();
             }
         };

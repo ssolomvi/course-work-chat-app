@@ -8,7 +8,7 @@ import ru.mai.client.ChatClient;
 
 import java.util.concurrent.TimeUnit;
 
-class ClientTests {
+class ClientApplicationTests {
     String simpleUserLogin = "aboba";
 
     @Test
