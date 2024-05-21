@@ -7,23 +7,23 @@ package ru.mai;
 
 service ChatService {
     /*  -------------------------------- HELLO -------------------------------- */
-    rpc Connect (Login) returns (ConnectResponse); // works with blocking stub
-    rpc Disconnect (Login) returns (Empty); // works with blocking stub
+    rpc Connect (Login) returns (ConnectResponse);
+    rpc Disconnect (Login) returns (Empty);
 
-    rpc ConnectWithRooms (stream ChatRoomLogins) returns (stream CompanionStatus);
-    rpc DisconnectWithRooms (stream ChatRoomLogins) returns (Empty); // edited
+    rpc ConnectWithRooms (stream ChatRoomLogins) returns (stream CompanionStatus); // хз
+    rpc DisconnectWithRooms (stream ChatRoomLogins) returns (Empty);
 
     rpc CheckCompanionStatus(ChatRoomLogins) returns (CompanionStatus);
 
     /*  -------------------------------- INIT / DELETE CHAT ROOM -------------------------------- */
-    rpc InitRoom (InitRoomRequest) returns (InitRoomResponse);
-    rpc CheckForInitRoomRequest (Login) returns (stream InitRoomResponse);
+    rpc InitRoom (InitRoomRequest) returns (InitRoomResponse); // todo: use blocking stub
+    rpc CheckForInitRoomRequest (Login) returns (stream InitRoomResponse); // server ok,
 
-    rpc PassDiffieHellmanNumber (stream DiffieHellmanNumber) returns (Empty); // edited
-    rpc AnyDiffieHellmanNumber (Login) returns (stream DiffieHellmanNumber);
+    rpc PassDiffieHellmanNumber (stream DiffieHellmanNumber) returns (Empty); // edited server
+    rpc AnyDiffieHellmanNumber (Login) returns (stream DiffieHellmanNumber); // server ok,
 
-    rpc DeleteRoom (ChatRoomLogins) returns (CompanionStatus);
-    rpc CheckForDeletedRoom (Login) returns (stream CompanionStatus);
+    rpc DeleteRoom (ChatRoomLogins) returns (CompanionStatus); // todo: use blocking stub
+    rpc CheckForDeletedRoom (Login) returns (stream CompanionStatus); // server ok
 
     /*  -------------------------------- CONNECT/DISCONNECT -------------------------------- */
     //    rpc ConnectRoom (ChatRoom) returns (CompanionLogin); // returns status (if connected, not empty)

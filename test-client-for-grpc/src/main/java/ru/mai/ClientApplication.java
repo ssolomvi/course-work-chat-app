@@ -3,7 +3,6 @@ package ru.mai;
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import ru.mai.client.ChatClient;
 
 import java.util.concurrent.TimeUnit;
@@ -18,10 +17,13 @@ public class ClientApplication {
         try {
             ChatClient client = new ChatClient(channel, "aboba");
 
+            client.checkCompanionsStatuses();
+
             client.disconnect();
         } finally {
-            channel.shutdown().awaitTermination(100, TimeUnit.SECONDS);
+            channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
         }
+        return;
     }
 
 }

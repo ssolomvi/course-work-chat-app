@@ -134,7 +134,7 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
                     notifyForConnection.put(companionLogin, connected);
                 }
 
-                log.debug("User {} connected with companion {}", ownLogin, companionLogin);
+                log.debug("User {} {} companion {}", ownLogin, companionIsActive ? "connected with" : "waiting for", companionLogin);
 
                 responseObserver.onNext(CompanionStatus.newBuilder()
                         .setCompanionLogin(companionLogin)
@@ -184,12 +184,7 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
                     notifyForDisconnection.put(companionLogin, value);
                 }
 
-                var map = consumers.get(ownLogin);
-                if (map.isEmpty()) {
-                    consumers.remove(ownLogin);
-                }
-
-                log.debug("User {} disconnected with companion {}", ownLogin, companionLogin);
+                log.debug("User {} disconnected from companion {}", ownLogin, companionLogin);
             }
 
             @Override
@@ -267,11 +262,10 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
     @Override
     public void checkForInitRoomRequest(Login request, StreamObserver<InitRoomResponse> responseObserver) {
-        // make a chat room
-        // make consumers
         if (!initRoomRequests.containsKey(request.getLogin())) {
             responseObserver.onNext(InitRoomResponse.getDefaultInstance());
             responseObserver.onCompleted();
+            return;
         }
 
         for (var requestedInit : initRoomRequests.get(request.getLogin()).entrySet()) {
@@ -377,7 +371,7 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
         for (var deletionInitiator : deleteRoomRequests.get(request.getLogin())) {
             log.debug("User {} has chat deleted with {}", request.getLogin(), deletionInitiator);
-            responseObserver.onNext(CompanionStatus.newBuilder().setCompanionLogin(deletionInitiator).build());
+            responseObserver.onNext(CompanionStatus.newBuilder().setCompanionLogin(deletionInitiator).setStatus(true).build());
         }
 
         responseObserver.onCompleted();

@@ -1,6 +1,7 @@
 package ru.mai.client.room;
 
 import io.grpc.stub.StreamObserver;
+import lombok.extern.slf4j.Slf4j;
 import ru.mai.*;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.observers.CompanionStatusObserver;
@@ -12,23 +13,26 @@ import ru.mai.utils.Operations;
 import ru.mai.utils.Pair;
 
 import java.math.BigInteger;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 
+@Slf4j
 public class ChatRoomHandler {
     private static final int DIFFIE_HELLMAN_NUMBER_SIZE = 50;
     private final String userLogin;
     private final Login login;
     private final ChatServiceGrpc.ChatServiceStub asyncStub;
+    private final ChatServiceGrpc.ChatServiceBlockingStub blockingStub;
     private final BigInteger diffieHellmanG;
 
     private final Map<String, Pair<InitRoomResponse, BigInteger>> companionsBeforeChatRoomCreated = new ConcurrentHashMap<>();
     private final EncryptionContextBuilderOfInitRoomResponse contextBuilder = new EncryptionContextBuilderOfInitRoomResponse();
 
-    public ChatRoomHandler(String userLogin, ChatServiceGrpc.ChatServiceStub asyncStub, BigInteger diffieHellmanG) {
+    public ChatRoomHandler(String userLogin, ChatServiceGrpc.ChatServiceBlockingStub blockingStub, ChatServiceGrpc.ChatServiceStub asyncStub, BigInteger diffieHellmanG) {
         this.userLogin = userLogin;
         this.asyncStub = asyncStub;
+        this.blockingStub = blockingStub;
         this.login = Login.newBuilder().setLogin(userLogin).build();
         this.diffieHellmanG = diffieHellmanG;
     }
@@ -47,17 +51,11 @@ public class ChatRoomHandler {
                 .setAlgorithm(algorithm)
                 .build();
 
-        InitRoomObserver initRoomObserver = new InitRoomObserver();
+        var response = blockingStub.initRoom(request);
 
-        asyncStub.initRoom(request, initRoomObserver);
-
-        var responses = initRoomObserver.getResponses();
-
-        if (responses.isEmpty()) {
+        if (response.equals(InitRoomResponse.getDefaultInstance())) {
             return false;
         }
-
-        InitRoomResponse response = initRoomObserver.getResponses().get(0);
 
         companionsBeforeChatRoomCreated.put(companion,
                 new Pair<>(response, generateDiffieHellmanMinorNumber()));
@@ -69,23 +67,45 @@ public class ChatRoomHandler {
      * Checks if any requests for initiating chat room exist.
      * <p>
      * If any, adds correspond data for passing diffie-hellman numbers
+     *
      * @return {@code true}, if any requests for initiating chat room exist
      */
     public boolean checkForInitRoomRequests() {
-        InitRoomObserver initRoomObserver = new InitRoomObserver();
+        final CountDownLatch finishLatch = new CountDownLatch(1);
+        final List<InitRoomResponse> responses = new LinkedList<>();
 
-        asyncStub.checkForInitRoomRequest(login, initRoomObserver);
+        asyncStub.checkForInitRoomRequest(login, new StreamObserver<>() {
+            private final InitRoomResponse dummy = InitRoomResponse.getDefaultInstance();
 
-        Iterable<InitRoomResponse> responses = initRoomObserver.getResponses();
+            @Override
+            public void onNext(InitRoomResponse value) {
+                if (!value.equals(dummy)) {
+                    responses.add(value);
+                }
+            }
 
-        boolean responsesIsNotEmpty = false;
+            @Override
+            public void onError(Throwable t) {
+                log.error("Error happened, cause: ", t);
+                finishLatch.countDown();
+            }
+
+            @Override
+            public void onCompleted() {
+                finishLatch.countDown();
+            }
+        });
+
+        if (responses.isEmpty()) {
+            return false;
+        }
+
         for (InitRoomResponse response : responses) {
-            responsesIsNotEmpty = true;
             companionsBeforeChatRoomCreated.put(response.getCompanionLogin(),
                     new Pair<>(response, generateDiffieHellmanMinorNumber()));
         }
 
-        return responsesIsNotEmpty;
+        return true;
     }
 
     /**
@@ -95,10 +115,25 @@ public class ChatRoomHandler {
         if (companionsBeforeChatRoomCreated.isEmpty()) {
             return;
         }
+        final CountDownLatch finalLatch = new CountDownLatch(1);
 
-        EmptyResponseObserver responseObserver = new EmptyResponseObserver();
+        StreamObserver<DiffieHellmanNumber> requestObserver = asyncStub.passDiffieHellmanNumber(new StreamObserver<Empty>() {
+            @Override
+            public void onNext(Empty value) {
+                //
+            }
 
-        StreamObserver<DiffieHellmanNumber> requestObserver = asyncStub.passDiffieHellmanNumber(responseObserver);
+            @Override
+            public void onError(Throwable t) {
+                log.error("Error happened, cause: ", t);
+                finalLatch.countDown();
+            }
+
+            @Override
+            public void onCompleted() {
+                finalLatch.countDown();
+            }
+        });
 
         for (Map.Entry<String, Pair<InitRoomResponse, BigInteger>> companionInfo : companionsBeforeChatRoomCreated.entrySet()) {
             BigInteger numberToPass = getDiffieHellmanNumber(companionInfo.getValue().getValue(),
@@ -116,11 +151,34 @@ public class ChatRoomHandler {
     }
 
     public Map<String, EncryptionContext> anyDiffieHellmanNumbers() {
-        DiffieHellmanNumberObserver diffieHellmanNumberObserver = new DiffieHellmanNumberObserver();
+        final CountDownLatch finalLatch = new CountDownLatch(1);
+        final Map<String, String> numbers = new HashMap<>();
 
-        asyncStub.anyDiffieHellmanNumber(login, diffieHellmanNumberObserver);
+        asyncStub.anyDiffieHellmanNumber(login, new StreamObserver<>() {
+            private final DiffieHellmanNumber dummy = DiffieHellmanNumber.getDefaultInstance();
 
-        Map<String, String> numbers = diffieHellmanNumberObserver.getNumbers();
+            @Override
+            public void onNext(DiffieHellmanNumber value) {
+                if (!value.equals(dummy)) {
+                    numbers.put(value.getCompanionLogin(), value.getNumber());
+                }
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                log.error("Error occurred, cause: ", t);
+                finalLatch.countDown();
+            }
+
+            @Override
+            public void onCompleted() {
+                finalLatch.countDown();
+            }
+        });
+
+        if (numbers.isEmpty()) {
+            return Collections.emptyMap();
+        }
 
         Map<String, EncryptionContext> companionContexts = new HashMap<>();
 
@@ -161,18 +219,43 @@ public class ChatRoomHandler {
                 .setCompanionLogin(companion)
                 .build();
 
-        CompanionStatusObserver observer = new CompanionStatusObserver();
+        var response = blockingStub.deleteRoom(chatRoomLogins);
 
-        asyncStub.deleteRoom(chatRoomLogins, observer);
-
-        return observer.getCompanionsAndStatus().get(companion);
+        return response.getStatus();
     }
 
     public Map<String, Boolean> checkForDeleteRoomRequests() {
-        CompanionStatusObserver companionStatusObserver = new CompanionStatusObserver();
+        final CountDownLatch finalLatch = new CountDownLatch(1);
+        final Map<String, Boolean> deleted = new HashMap<>();
 
-        asyncStub.checkForDeletedRoom(login, companionStatusObserver);
+        asyncStub.checkForDeletedRoom(login, new StreamObserver<>() {
+            private final CompanionStatus dummy = CompanionStatus.getDefaultInstance();
 
-        return companionStatusObserver.getCompanionsAndStatus();
+            @Override
+            public void onNext(CompanionStatus value) {
+                if (value.equals(dummy)) {
+                    return;
+                }
+
+                deleted.put(value.getCompanionLogin(), value.getStatus());
+                log.debug("Companion {} deleted chat", value.getCompanionLogin());
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                log.error("Error occurred, cause: ", t);
+                finalLatch.countDown();
+            }
+
+            @Override
+            public void onCompleted() {
+                finalLatch.countDown();
+            }
+        });
+
+        if (deleted.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return deleted;
     }
 }
