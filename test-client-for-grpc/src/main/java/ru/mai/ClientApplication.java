@@ -23,14 +23,14 @@ public class ClientApplication {
                 log.debug("Initiated client Alexandr");
 
                 alex.addRoom("Boba", "ECB");
-                boba.checkForInitRoomRequests();
-                boba.checkCompanionsStatuses();
-                Thread.sleep(5000);
                 alex.checkForDiffieHellmanNumbers();
+                Thread.sleep(10000);
+                boba.deleteRoom("Alexandr");
+                alex.checkForDeleteRoomRequest();
+                Thread.sleep(10000);
+                alex.disconnect();
             }
-            Thread.sleep(20000);
-//            log.info("Disconnecting");
-//            client.disconnect();
+            boba.disconnect();
         } catch (Exception e) {
             log.error("Client application -- error happened: ", e);
         } finally {

@@ -19,7 +19,7 @@ service ChatService {
     rpc InitRoom (InitRoomRequest) returns (InitRoomResponse);
     rpc CheckForInitRoomRequest (Login) returns (stream InitRoomResponse);
 
-        rpc PassDiffieHellmanNumber (stream DiffieHellmanNumber) returns (Empty);
+    rpc PassDiffieHellmanNumber (DiffieHellmanNumber) returns (Empty);
     rpc AnyDiffieHellmanNumber (Login) returns (stream DiffieHellmanNumber);
 
     rpc DeleteRoom (ChatRoomLogins) returns (CompanionStatus);

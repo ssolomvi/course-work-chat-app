@@ -1,7 +1,6 @@
 package ru.mai.client.room;
 
 import io.grpc.StatusRuntimeException;
-import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 import ru.mai.*;
 import ru.mai.encryption_context.EncryptionContext;
@@ -10,9 +9,11 @@ import ru.mai.utils.Operations;
 import ru.mai.utils.Pair;
 
 import java.math.BigInteger;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 
 @Slf4j
 public class ChatRoomHandler {
@@ -74,6 +75,7 @@ public class ChatRoomHandler {
      * @return {@code true}, if any requests for initiating chat room exist
      */
     public boolean checkForInitRoomRequests() {
+        boolean atLeastOneIsNotDummy = false;
         try {
             Iterator<InitRoomResponse> responses = blockingStub.checkForInitRoomRequest(login);
             final InitRoomResponse dummy = InitRoomResponse.getDefaultInstance();
@@ -81,6 +83,7 @@ public class ChatRoomHandler {
             if (!responses.hasNext()) {
                 return false;
             }
+
 
             while (responses.hasNext()) {
                 InitRoomResponse response = responses.next();
@@ -90,12 +93,13 @@ public class ChatRoomHandler {
                 // put metadata for to chat with
                 metadataAfterInit.put(response.getCompanionLogin(),
                         new Pair<>(response, generateDiffieHellmanMinorNumber()));
+                atLeastOneIsNotDummy = true;
             }
 
         } catch (StatusRuntimeException e) {
             log.error("{} checkForInitRoomRequests: Error happened, cause: ", login, e);
         }
-        return true;
+        return atLeastOneIsNotDummy;
     }
 
     /**
@@ -106,43 +110,24 @@ public class ChatRoomHandler {
             return;
         }
 
+        try {
+            for (var metadata: metadataAfterInit.entrySet()) {
+                // A = g^a mod p
+                BigInteger numberToPass = getDiffieHellmanNumber(metadata.getValue().getValue(),
+                        new BigInteger(metadata.getValue().getKey().getDiffieHellmanP()));
 
+                blockingStub.passDiffieHellmanNumber(
+                        DiffieHellmanNumber.newBuilder()
+                                .setOwnLogin(userLogin)
+                                .setCompanionLogin(metadata.getKey())
+                                .setNumber(numberToPass.toString())
+                                .build());
 
-        final CountDownLatch finalLatch = new CountDownLatch(1);
-
-        StreamObserver<DiffieHellmanNumber> requestObserver = asyncStub.passDiffieHellmanNumber(new StreamObserver<>() {
-            @Override
-            public void onNext(Empty value) {
-                //
+                log.debug("{} -> {}: Passed diffie-hellman number: {}", userLogin, metadata.getKey(), numberToPass);
             }
-
-            @Override
-            public void onError(Throwable t) {
-                log.error("passDiffieHellmanNumber: Error happened, cause: ", t);
-                finalLatch.countDown();
-            }
-
-            @Override
-            public void onCompleted() {
-                finalLatch.countDown();
-            }
-        });
-
-        for (Map.Entry<String, Pair<InitRoomResponse, BigInteger>> metadata : metadataAfterInit.entrySet()) {
-            // A = g^a mod p
-            BigInteger numberToPass = getDiffieHellmanNumber(metadata.getValue().getValue(),
-                    new BigInteger(metadata.getValue().getKey().getDiffieHellmanP()));
-
-            DiffieHellmanNumber request = DiffieHellmanNumber.newBuilder()
-                    .setOwnLogin(userLogin)
-                    .setCompanionLogin(metadata.getKey())
-                    .setNumber(numberToPass.toString())
-                    .build();
-
-            requestObserver.onNext(request);
-            log.debug("{} -> {}: Passed diffie-hellman number: {}", userLogin, metadata.getKey(), numberToPass);
+        } catch (StatusRuntimeException e) {
+            log.error("{}: passDiffieHellmanNumber: Error happened, cause: ", userLogin, e);
         }
-        requestObserver.onCompleted();
     }
 
     public Map<String, EncryptionContext> anyDiffieHellmanNumbers() {
@@ -165,9 +150,6 @@ public class ChatRoomHandler {
                 // todo: insert into db new value (companion_login, encryption_mode, padding_mode, algorithm, init_vector, key)
                 Pair<InitRoomResponse, BigInteger> metadata = metadataAfterInit.get(companionNumber.getCompanionLogin());
                 // key = B ^ a mod P
-                if (metadata == null) {
-                    log.warn("METADATA IS NULL FOR {}", userLogin);
-                }
                 byte[] key = getKey(
                         new BigInteger(companionNumber.getNumber()), // companion number, B
                         metadata.getValue(), // minor number, a

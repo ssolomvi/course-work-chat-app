@@ -293,38 +293,19 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
     }
 
     @Override
-    public StreamObserver<DiffieHellmanNumber> passDiffieHellmanNumber(StreamObserver<Empty> responseObserver) {
+    public void passDiffieHellmanNumber(DiffieHellmanNumber request, StreamObserver<Empty> responseObserver) {
+        Map<String, String> senders;
+        if (diffieHellmanNumbers.containsKey(request.getCompanionLogin())) {
+            senders = diffieHellmanNumbers.get(request.getCompanionLogin());
+        } else {
+            senders = new HashMap<>();
+        }
 
-        return new StreamObserver<>() {
-            private DiffieHellmanNumber tmp;
-            @Override
-            public void onNext(DiffieHellmanNumber value) {
-                this.tmp = value;
-                Map<String, String> senders;
-                if (diffieHellmanNumbers.containsKey(value.getCompanionLogin())) {
-                    senders = diffieHellmanNumbers.get(value.getCompanionLogin());
-                } else {
-                    senders = new HashMap<>();
-                }
+        senders.put(request.getOwnLogin(), request.getNumber());
+        diffieHellmanNumbers.put(request.getCompanionLogin(), senders);
 
-                senders.put(value.getOwnLogin(), value.getNumber());
-
-                diffieHellmanNumbers.put(value.getCompanionLogin(), senders);
-                log.debug("{} -> {}: passed diffie-hellman number {}", value.getOwnLogin(), value.getCompanionLogin(), value.getNumber());
-            }
-
-            @Override
-            public void onError(Throwable t) {
-                log.error("passDiffieHellmanNumber {} -> {}: Error happened while connecting: ", tmp.getOwnLogin(), tmp.getCompanionLogin(), t);
-            }
-
-            @Override
-            public void onCompleted() {
-                responseObserver.onNext(Empty.getDefaultInstance());
-                log.debug("{}: completed passing dh", tmp.getOwnLogin());
-                responseObserver.onCompleted();
-            }
-        };
+        responseObserver.onNext(Empty.getDefaultInstance());
+        responseObserver.onCompleted();
     }
 
     @Override
@@ -335,8 +316,7 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
             return;
         }
 
-        var senders = diffieHellmanNumbers.get(request.getLogin());
-        diffieHellmanNumbers.remove(request.getLogin());
+        var senders = diffieHellmanNumbers.remove(request.getLogin());
 
         for (var sender : senders.entrySet()) {
             log.debug("{} <- {}: got diffie-hellman number {}", request.getLogin(), sender.getKey(), sender.getValue());

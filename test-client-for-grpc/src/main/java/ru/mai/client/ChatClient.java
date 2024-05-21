@@ -7,6 +7,7 @@ import ru.mai.client.room.ChatRoomHandler;
 import ru.mai.encryption_context.EncryptionContext;
 
 import java.math.BigInteger;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +27,8 @@ public class ChatClient implements AutoCloseable {
     private int checkForDiffieHellmanNumbers = 0;
 
     // todo: load all companions from database
-    List<String> companions = List.of("Boba", "Alexandr", "Ilya");
+//    private final List<String> companions = List.of("Boba", "Alexandr", "Ilya");
+    private final List<String> companions = new LinkedList<>();
 
     public ChatClient(ManagedChannel channel, String login) {
         ChatServiceGrpc.ChatServiceBlockingStub stub = ChatServiceGrpc.newBlockingStub(channel);
@@ -41,7 +43,11 @@ public class ChatClient implements AutoCloseable {
 
         BigInteger diffieHellmanG = connectionsHandler.connectToServer();
 
-        this.companionsStatuses = connectionsHandler.connectRooms(companions);
+        if (!companions.isEmpty()) {
+            this.companionsStatuses = connectionsHandler.connectRooms(companions);
+        } else {
+            this.companionsStatuses = new ConcurrentHashMap<>();
+        }
         this.chatRoomHandler = new ChatRoomHandler(login, stub, asyncStub, diffieHellmanG);
 
         pingServer();
