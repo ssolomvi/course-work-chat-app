@@ -9,26 +9,30 @@ import ru.mai.encryption_context.EncryptionContext;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-public class ChatClient {
+public class ChatClient implements AutoCloseable {
+    private final ScheduledExecutorService scheduled = Executors.newSingleThreadScheduledExecutor();
     private final String login;
     private final ConnectionsHandler connectionsHandler;
     private final ChatRoomHandler chatRoomHandler;
     private final Map<String, Boolean> companionsStatuses; // offline or online
-    private Map<String, EncryptionContext> companionsContexts;
+    private final Map<String, EncryptionContext> companionsContexts = new ConcurrentHashMap<>();
+
+    private int checkForDiffieHellmanNumbers = 0;
 
     // todo: load all companions from database
-    List<String> companions = List.of("Boba", "Sasha", "Ilya");
+    List<String> companions = List.of("Boba", "Alexandr", "Ilya");
 
-    public ChatClient(ManagedChannel channel, String login) throws InterruptedException {
+    public ChatClient(ManagedChannel channel, String login) {
         ChatServiceGrpc.ChatServiceBlockingStub stub = ChatServiceGrpc.newBlockingStub(channel);
         ChatServiceGrpc.ChatServiceStub asyncStub = ChatServiceGrpc.newStub(channel);
 
-        log.info("Client started, listening with channel {}", channel);
+        log.info("{} started, listening with channel {}", login, channel);
 
         this.login = login;
         this.connectionsHandler = new ConnectionsHandler(login, stub, asyncStub);
@@ -51,12 +55,15 @@ public class ChatClient {
 
     // region Ping server
     private void pingServer() {
-        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
+        log.debug("{}: pinging server", login);
+        scheduled.scheduleAtFixedRate(
                 () -> {
+                    checkCompanionsStatuses();
                     checkForDeleteRoomRequest();
                     checkForInitRoomRequests();
-                    checkForDiffieHellmanNumbers();
-                    checkCompanionsStatuses();
+                    if (checkForDiffieHellmanNumbers != 0) {
+                        checkForDiffieHellmanNumbers();
+                    }
                 },
                 0, 5, TimeUnit.SECONDS
         );
@@ -71,20 +78,26 @@ public class ChatClient {
         }
     }
 
-    private void checkForInitRoomRequests() {
+    public void checkForInitRoomRequests() {
         boolean thereAreRequests = chatRoomHandler.checkForInitRoomRequests();
         if (thereAreRequests) {
             chatRoomHandler.passDiffieHellmanNumber();
+            ++checkForDiffieHellmanNumbers;
         }
     }
 
-    private void checkForDiffieHellmanNumbers() {
-        var passedDiffieHellmanNumbers = chatRoomHandler.anyDiffieHellmanNumbers();
+    public void checkForDiffieHellmanNumbers() {
+        var response = chatRoomHandler.anyDiffieHellmanNumbers();
 
-        this.companionsContexts.putAll(passedDiffieHellmanNumbers);
+        if (!response.isEmpty()) {
+            --checkForDiffieHellmanNumbers;
+        }
+
+        this.companionsContexts.putAll(response);
     }
 
-    private void checkForDeleteRoomRequest() {
+    public void checkForDeleteRoomRequest() {
+//        log.debug("checking for delete room request");
         var requestedDeletion = chatRoomHandler.checkForDeleteRoomRequests();
 
         for (Map.Entry<String, Boolean> requester : requestedDeletion.entrySet()) {
@@ -99,10 +112,13 @@ public class ChatClient {
     public void disconnect() throws InterruptedException {
         connectionsHandler.disconnectRooms(companions);
         connectionsHandler.disconnectFromServer();
-        log.info("Disconnected from server");
+        log.info("{}: disconnected from server", login);
+        // flush messages if using cash
+        // close executor
     }
 
     public void addRoom(String companion, String algorithm) {
+        log.debug("{}: initiated adding room with {}", login, companion);
         if (chatRoomHandler.initRoom(companion, algorithm)) {
             chatRoomHandler.passDiffieHellmanNumber();
         }
@@ -110,10 +126,10 @@ public class ChatClient {
 
     public void deleteRoom(String companion) {
         if (chatRoomHandler.deleteRoom(companion)) {
-            log.info("Deleted chat room with {}", companion);
+            log.info("{}: deleted chat room with {}", login, companion);
             companionsContexts.remove(companion);
         } else {
-            log.info("Error deleting chat room, 'cause {} is offline or already sent a delete request", companion);
+            log.info("{}: Error deleting chat room, 'cause {} is offline or already sent a delete request", login, companion);
         }
     }
 
@@ -123,5 +139,17 @@ public class ChatClient {
 
     public void checkForMessages(String companion) {
         //
+    }
+
+    @Override
+    public void close() throws Exception {
+        scheduled.shutdown();
+        try {
+            if (!scheduled.awaitTermination(800, TimeUnit.MILLISECONDS)) {
+                scheduled.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduled.shutdownNow();
+        }
     }
 }

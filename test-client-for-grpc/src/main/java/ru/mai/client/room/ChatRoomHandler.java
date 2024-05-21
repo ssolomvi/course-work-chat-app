@@ -1,13 +1,10 @@
 package ru.mai.client.room;
 
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 import ru.mai.*;
 import ru.mai.encryption_context.EncryptionContext;
-import ru.mai.observers.CompanionStatusObserver;
-import ru.mai.observers.DiffieHellmanNumberObserver;
-import ru.mai.observers.EmptyResponseObserver;
-import ru.mai.observers.InitRoomObserver;
 import ru.mai.utils.MathOperationsBigInteger;
 import ru.mai.utils.Operations;
 import ru.mai.utils.Pair;
@@ -26,7 +23,13 @@ public class ChatRoomHandler {
     private final ChatServiceGrpc.ChatServiceBlockingStub blockingStub;
     private final BigInteger diffieHellmanG;
 
-    private final Map<String, Pair<InitRoomResponse, BigInteger>> companionsBeforeChatRoomCreated = new ConcurrentHashMap<>();
+    /**
+     * Collection, updated in methods checkForInitRoomRequests,
+     * quarried in methods anyDiffieHellmanNumbers
+     * <p>
+     * Key is companion login, value is a pair of config for chatting with companion and minor number for dh
+     */
+    private final Map<String, Pair<InitRoomResponse, BigInteger>> metadataAfterInit = new ConcurrentHashMap<>();
     private final EncryptionContextBuilderOfInitRoomResponse contextBuilder = new EncryptionContextBuilderOfInitRoomResponse();
 
     public ChatRoomHandler(String userLogin, ChatServiceGrpc.ChatServiceBlockingStub blockingStub, ChatServiceGrpc.ChatServiceStub asyncStub, BigInteger diffieHellmanG) {
@@ -39,7 +42,7 @@ public class ChatRoomHandler {
 
 
     /**
-     * Initiates creating a single room
+     * Initiates creating a single chat room. Passes metadata for companion
      *
      * @param companion companion's login
      * @param algorithm chosen algorithm
@@ -57,8 +60,8 @@ public class ChatRoomHandler {
             return false;
         }
 
-        companionsBeforeChatRoomCreated.put(companion,
-                new Pair<>(response, generateDiffieHellmanMinorNumber()));
+        // put metadata for initiator
+        metadataAfterInit.put(companion, new Pair<>(response, generateDiffieHellmanMinorNumber()));
 
         return true;
     }
@@ -71,40 +74,27 @@ public class ChatRoomHandler {
      * @return {@code true}, if any requests for initiating chat room exist
      */
     public boolean checkForInitRoomRequests() {
-        final CountDownLatch finishLatch = new CountDownLatch(1);
-        final List<InitRoomResponse> responses = new LinkedList<>();
+        try {
+            Iterator<InitRoomResponse> responses = blockingStub.checkForInitRoomRequest(login);
+            final InitRoomResponse dummy = InitRoomResponse.getDefaultInstance();
 
-        asyncStub.checkForInitRoomRequest(login, new StreamObserver<>() {
-            private final InitRoomResponse dummy = InitRoomResponse.getDefaultInstance();
+            if (!responses.hasNext()) {
+                return false;
+            }
 
-            @Override
-            public void onNext(InitRoomResponse value) {
-                if (!value.equals(dummy)) {
-                    responses.add(value);
+            while (responses.hasNext()) {
+                InitRoomResponse response = responses.next();
+                if (response.equals(dummy)) {
+                    continue;
                 }
+                // put metadata for to chat with
+                metadataAfterInit.put(response.getCompanionLogin(),
+                        new Pair<>(response, generateDiffieHellmanMinorNumber()));
             }
 
-            @Override
-            public void onError(Throwable t) {
-                log.error("Error happened, cause: ", t);
-                finishLatch.countDown();
-            }
-
-            @Override
-            public void onCompleted() {
-                finishLatch.countDown();
-            }
-        });
-
-        if (responses.isEmpty()) {
-            return false;
+        } catch (StatusRuntimeException e) {
+            log.error("{} checkForInitRoomRequests: Error happened, cause: ", login, e);
         }
-
-        for (InitRoomResponse response : responses) {
-            companionsBeforeChatRoomCreated.put(response.getCompanionLogin(),
-                    new Pair<>(response, generateDiffieHellmanMinorNumber()));
-        }
-
         return true;
     }
 
@@ -112,12 +102,15 @@ public class ChatRoomHandler {
      * If there are initiated requests for chat room creation, passes Diffie-Hellman number
      */
     public void passDiffieHellmanNumber() {
-        if (companionsBeforeChatRoomCreated.isEmpty()) {
+        if (metadataAfterInit.isEmpty()) {
             return;
         }
+
+
+
         final CountDownLatch finalLatch = new CountDownLatch(1);
 
-        StreamObserver<DiffieHellmanNumber> requestObserver = asyncStub.passDiffieHellmanNumber(new StreamObserver<Empty>() {
+        StreamObserver<DiffieHellmanNumber> requestObserver = asyncStub.passDiffieHellmanNumber(new StreamObserver<>() {
             @Override
             public void onNext(Empty value) {
                 //
@@ -125,7 +118,7 @@ public class ChatRoomHandler {
 
             @Override
             public void onError(Throwable t) {
-                log.error("Error happened, cause: ", t);
+                log.error("passDiffieHellmanNumber: Error happened, cause: ", t);
                 finalLatch.countDown();
             }
 
@@ -135,64 +128,63 @@ public class ChatRoomHandler {
             }
         });
 
-        for (Map.Entry<String, Pair<InitRoomResponse, BigInteger>> companionInfo : companionsBeforeChatRoomCreated.entrySet()) {
-            BigInteger numberToPass = getDiffieHellmanNumber(companionInfo.getValue().getValue(),
-                    new BigInteger(companionInfo.getValue().getKey().getDiffieHellmanP()));
+        for (Map.Entry<String, Pair<InitRoomResponse, BigInteger>> metadata : metadataAfterInit.entrySet()) {
+            // A = g^a mod p
+            BigInteger numberToPass = getDiffieHellmanNumber(metadata.getValue().getValue(),
+                    new BigInteger(metadata.getValue().getKey().getDiffieHellmanP()));
 
             DiffieHellmanNumber request = DiffieHellmanNumber.newBuilder()
                     .setOwnLogin(userLogin)
-                    .setCompanionLogin(companionInfo.getKey())
+                    .setCompanionLogin(metadata.getKey())
                     .setNumber(numberToPass.toString())
                     .build();
 
             requestObserver.onNext(request);
+            log.debug("{} -> {}: Passed diffie-hellman number: {}", userLogin, metadata.getKey(), numberToPass);
         }
-
+        requestObserver.onCompleted();
     }
 
     public Map<String, EncryptionContext> anyDiffieHellmanNumbers() {
-        final CountDownLatch finalLatch = new CountDownLatch(1);
-        final Map<String, String> numbers = new HashMap<>();
+        try {
+            var numbers = blockingStub.anyDiffieHellmanNumber(login);
 
-        asyncStub.anyDiffieHellmanNumber(login, new StreamObserver<>() {
-            private final DiffieHellmanNumber dummy = DiffieHellmanNumber.getDefaultInstance();
+            if (!numbers.hasNext()) {
+                return Collections.emptyMap();
+            }
 
-            @Override
-            public void onNext(DiffieHellmanNumber value) {
-                if (!value.equals(dummy)) {
-                    numbers.put(value.getCompanionLogin(), value.getNumber());
+            final Map<String, EncryptionContext> companionContexts = new HashMap<>();
+            final DiffieHellmanNumber dummy = DiffieHellmanNumber.getDefaultInstance();
+
+            while (numbers.hasNext()) {
+                DiffieHellmanNumber companionNumber = numbers.next();
+                if (companionNumber.equals(dummy)) {
+                    continue;
                 }
+                log.debug("{} <- {}: got number {}", userLogin, companionNumber.getCompanionLogin(), companionNumber.getNumber());
+                // todo: insert into db new value (companion_login, encryption_mode, padding_mode, algorithm, init_vector, key)
+                Pair<InitRoomResponse, BigInteger> metadata = metadataAfterInit.get(companionNumber.getCompanionLogin());
+                // key = B ^ a mod P
+                if (metadata == null) {
+                    log.warn("METADATA IS NULL FOR {}", userLogin);
+                }
+                byte[] key = getKey(
+                        new BigInteger(companionNumber.getNumber()), // companion number, B
+                        metadata.getValue(), // minor number, a
+                        new BigInteger(metadata.getKey().getDiffieHellmanP())); // d-h P number
+
+                companionContexts.put(companionNumber.getCompanionLogin(),
+                        contextBuilder.buildEncryptionContext(metadata.getKey(), key));
+
+                metadataAfterInit.remove(companionNumber.getCompanionLogin());
+                log.debug("{} -> {}: created context", userLogin, companionNumber.getCompanionLogin());
             }
 
-            @Override
-            public void onError(Throwable t) {
-                log.error("Error occurred, cause: ", t);
-                finalLatch.countDown();
-            }
-
-            @Override
-            public void onCompleted() {
-                finalLatch.countDown();
-            }
-        });
-
-        if (numbers.isEmpty()) {
-            return Collections.emptyMap();
+            return companionContexts;
+        } catch (StatusRuntimeException e) {
+            log.debug("{}: anyDiffieHellmanNumbers: Error occurred, cause:, ", userLogin, e);
         }
-
-        Map<String, EncryptionContext> companionContexts = new HashMap<>();
-
-        for (Map.Entry<String, String> number : numbers.entrySet()) {
-            // todo: insert into db new value (companion_login, encryption_mode, padding_mode, algorithm, init_vector, key)
-            Pair<InitRoomResponse, BigInteger> companionInfo = companionsBeforeChatRoomCreated.get(number.getKey());
-            byte[] key = getKey(new BigInteger(number.getValue()), companionInfo.getValue(), new BigInteger(companionInfo.getKey().getDiffieHellmanP()));
-
-            companionContexts.put(number.getKey(), contextBuilder.buildEncryptionContext(companionInfo.getKey(), key));
-
-            companionsBeforeChatRoomCreated.remove(number.getKey());
-        }
-
-        return companionContexts;
+        return Collections.emptyMap();
     }
 
     private BigInteger generateDiffieHellmanMinorNumber() {
@@ -225,37 +217,29 @@ public class ChatRoomHandler {
     }
 
     public Map<String, Boolean> checkForDeleteRoomRequests() {
-        final CountDownLatch finalLatch = new CountDownLatch(1);
-        final Map<String, Boolean> deleted = new HashMap<>();
+        try {
 
-        asyncStub.checkForDeletedRoom(login, new StreamObserver<>() {
-            private final CompanionStatus dummy = CompanionStatus.getDefaultInstance();
+            var requests = blockingStub.checkForDeletedRoom(login);
 
-            @Override
-            public void onNext(CompanionStatus value) {
-                if (value.equals(dummy)) {
-                    return;
+            if (!requests.hasNext()) {
+                return Collections.emptyMap();
+            }
+
+            final Map<String, Boolean> deleted = new HashMap<>();
+            final CompanionStatus dummy = CompanionStatus.getDefaultInstance();
+
+            while (requests.hasNext()) {
+                CompanionStatus request = requests.next();
+                if (request.equals(dummy)) {
+                    continue;
                 }
-
-                deleted.put(value.getCompanionLogin(), value.getStatus());
-                log.debug("Companion {} deleted chat", value.getCompanionLogin());
+                deleted.put(request.getCompanionLogin(), request.getStatus());
             }
 
-            @Override
-            public void onError(Throwable t) {
-                log.error("Error occurred, cause: ", t);
-                finalLatch.countDown();
-            }
-
-            @Override
-            public void onCompleted() {
-                finalLatch.countDown();
-            }
-        });
-
-        if (deleted.isEmpty()) {
-            return Collections.emptyMap();
+            return deleted;
+        } catch (StatusRuntimeException e) {
+            log.error("{}: checkForDeleteRoomRequests: Error occurred, cause: ", userLogin, e);
         }
-        return deleted;
+        return Collections.emptyMap();
     }
 }

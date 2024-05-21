@@ -55,7 +55,9 @@ public class EncryptionContextBuilderOfInitRoomResponse {
 //            }
             default: {
                 if (key.length < 7) {
-                    throw new IllegalArgumentException("CRITICAL ERROR! key is less than 7 bytes!");
+                    byte[] expandedKey = new byte[7];
+                    System.arraycopy(key, 0, expandedKey, 7 - key.length, key.length);
+                    key = expandedKey;
                 }
                 if (key.length == 8 || key.length == 7) {
                     return new DES(key);

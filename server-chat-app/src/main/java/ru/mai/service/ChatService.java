@@ -2,6 +2,7 @@ package ru.mai.service;
 
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import ru.mai.*;
@@ -9,6 +10,7 @@ import ru.mai.model.ChatRoom;
 import ru.mai.model.KafkaMessage;
 import ru.mai.serialization.KafkaMessageDeserializer;
 
+import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -39,7 +41,7 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
     @Override
     public void connect(Login request, StreamObserver<ConnectResponse> responseObserver) {
-        log.debug("User {} connected", request.getLogin());
+        log.debug("{}: connected", request.getLogin());
         activeUsers.add(request.getLogin());
         responseObserver.onNext(connectResponse);
         responseObserver.onCompleted();
@@ -47,7 +49,7 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
     @Override
     public void disconnect(Login request, StreamObserver<Empty> responseObserver) {
-        log.debug("User {} disconnected", request.getLogin());
+        log.debug("{}: disconnected", request.getLogin());
         activeUsers.remove(request.getLogin());
         responseObserver.onNext(Empty.getDefaultInstance());
         responseObserver.onCompleted();
@@ -56,7 +58,9 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
     private KafkaConsumer<String, KafkaMessage> createKafkaConsumer(String topic) {
         // todo: configs
         KafkaConsumer<String, KafkaMessage> consumer = new KafkaConsumer<>(
-                Map.of(),
+                Map.of(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092",
+                        ConsumerConfig.GROUP_ID_CONFIG, "test_group_consumer",
+                        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"),
                 new StringDeserializer(),
                 new KafkaMessageDeserializer());
         consumer.subscribe(Collections.singletonList(topic));
@@ -134,7 +138,7 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
                     notifyForConnection.put(companionLogin, connected);
                 }
 
-                log.debug("User {} {} companion {}", ownLogin, companionIsActive ? "connected with" : "waiting for", companionLogin);
+                log.debug("{} -> {}: {}", ownLogin, companionLogin, companionIsActive ? "connected with" : "waiting for");
 
                 responseObserver.onNext(CompanionStatus.newBuilder()
                         .setCompanionLogin(companionLogin)
@@ -144,7 +148,7 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
             @Override
             public void onError(Throwable t) {
-                log.error("Error happened while connecting: ", t);
+                log.error("connectWithRooms: Error happened while connecting: ", t);
             }
 
             @Override
@@ -184,12 +188,12 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
                     notifyForDisconnection.put(companionLogin, value);
                 }
 
-                log.debug("User {} disconnected from companion {}", ownLogin, companionLogin);
+                log.debug("{} -> {}: disconnected", ownLogin, companionLogin);
             }
 
             @Override
             public void onError(Throwable t) {
-                log.error("Error happened while disconnecting: ", t);
+                log.error("disconnectWithRooms: Error happened while disconnecting: ", t);
             }
 
             @Override
@@ -203,11 +207,13 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
     @Override
     public void checkCompanionStatus(ChatRoomLogins request, StreamObserver<CompanionStatus> responseObserver) {
         if (activeUsers.contains(request.getCompanionLogin())) {
+            log.debug("{} -> {}: companion is online", request.getOwnLogin(), request.getCompanionLogin());
             responseObserver.onNext(CompanionStatus.newBuilder()
                     .setCompanionLogin(request.getCompanionLogin())
                     .setStatus(true)
                     .build());
         } else {
+            log.debug("{} -> {}: companion is offline", request.getOwnLogin(), request.getCompanionLogin());
             responseObserver.onNext(CompanionStatus.newBuilder()
                     .setCompanionLogin(request.getCompanionLogin())
                     .setStatus(false)
@@ -219,10 +225,10 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
         return InitRoomResponse.newBuilder()
                 .setCompanionLogin(companion)
                 .setAlgorithm(algorithm)
-                .setEncryptionMode("") // todo
-                .setPaddingMode("") // todo
+                .setEncryptionMode("ECB") // todo
+                .setPaddingMode("Zeroes") // todo
                 .setInitVector("") // todo
-                .setDiffieHellmanP("") // todo
+                .setDiffieHellmanP(BigInteger.TWO.pow(8 * 7).toString()) // todo: depends on ley length. Overall = 2^{8 * bytesNeeded}
                 .build();
     }
 
@@ -231,7 +237,13 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
         String ownLogin = request.getOwnLogin();
         String companionLogin = request.getCompanionLogin();
 
-        if (initRoomRequests.containsKey(ownLogin) || !activeUsers.contains(companionLogin)) {
+        if (!activeUsers.contains(companionLogin)) {
+            responseObserver.onNext(InitRoomResponse.getDefaultInstance());
+            responseObserver.onCompleted();
+            return;
+        }
+
+        if (initRoomRequests.containsKey(ownLogin)) {
             var whoRequested = initRoomRequests.get(ownLogin);
             if (whoRequested.containsKey(companionLogin)) {
                 // request already has been initiated. Now ownLogin must check for it
@@ -254,7 +266,9 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
         value.put(ownLogin, forCompanionLogin);
         initRoomRequests.put(companionLogin, value);
 
-        log.debug("User {} initiated room creation with {}", ownLogin, companionLogin);
+        rooms.add(new ChatRoom(ownLogin, companionLogin, getTopic(ownLogin, companionLogin), getTopic(companionLogin, ownLogin)));
+
+        log.debug("{} -> {}: initiated room creation", ownLogin, companionLogin);
 
         responseObserver.onNext(forOwnLogin);
         responseObserver.onCompleted();
@@ -268,8 +282,10 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
             return;
         }
 
-        for (var requestedInit : initRoomRequests.get(request.getLogin()).entrySet()) {
-            log.debug("User {} got invited to chat with {}", request.getLogin(), requestedInit.getKey());
+        var requesters = initRoomRequests.remove(request.getLogin());
+
+        for (var requestedInit : requesters.entrySet()) {
+            log.debug("{} -> {}: got invited to chat", request.getLogin(), requestedInit.getKey());
             responseObserver.onNext(requestedInit.getValue());
         }
 
@@ -278,9 +294,12 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
     @Override
     public StreamObserver<DiffieHellmanNumber> passDiffieHellmanNumber(StreamObserver<Empty> responseObserver) {
+
         return new StreamObserver<>() {
+            private DiffieHellmanNumber tmp;
             @Override
             public void onNext(DiffieHellmanNumber value) {
+                this.tmp = value;
                 Map<String, String> senders;
                 if (diffieHellmanNumbers.containsKey(value.getCompanionLogin())) {
                     senders = diffieHellmanNumbers.get(value.getCompanionLogin());
@@ -291,17 +310,18 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
                 senders.put(value.getOwnLogin(), value.getNumber());
 
                 diffieHellmanNumbers.put(value.getCompanionLogin(), senders);
-                log.debug("User {} passed diffie-hellman number to {}", value.getOwnLogin(), value.getCompanionLogin());
+                log.debug("{} -> {}: passed diffie-hellman number {}", value.getOwnLogin(), value.getCompanionLogin(), value.getNumber());
             }
 
             @Override
             public void onError(Throwable t) {
-                log.error("Error happened while connecting: ", t);
+                log.error("passDiffieHellmanNumber {} -> {}: Error happened while connecting: ", tmp.getOwnLogin(), tmp.getCompanionLogin(), t);
             }
 
             @Override
             public void onCompleted() {
                 responseObserver.onNext(Empty.getDefaultInstance());
+                log.debug("{}: completed passing dh", tmp.getOwnLogin());
                 responseObserver.onCompleted();
             }
         };
@@ -315,12 +335,15 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
             return;
         }
 
-        for (var senders : diffieHellmanNumbers.get(request.getLogin()).entrySet()) {
-            log.debug("User {} got diffie-hellman number from {}", request.getLogin(), senders.getKey());
+        var senders = diffieHellmanNumbers.get(request.getLogin());
+        diffieHellmanNumbers.remove(request.getLogin());
+
+        for (var sender : senders.entrySet()) {
+            log.debug("{} <- {}: got diffie-hellman number {}", request.getLogin(), sender.getKey(), sender.getValue());
             responseObserver.onNext(DiffieHellmanNumber.newBuilder()
                     .setOwnLogin(request.getLogin())
-                    .setCompanionLogin(senders.getKey())
-                    .setNumber(senders.getValue())
+                    .setCompanionLogin(sender.getKey())
+                    .setNumber(sender.getValue())
                     .build());
         }
 
@@ -329,7 +352,16 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
     @Override
     public void deleteRoom(ChatRoomLogins request, StreamObserver<CompanionStatus> responseObserver) {
-        if (deleteRoomRequests.containsKey(request.getOwnLogin()) || !activeUsers.contains(request.getCompanionLogin())) {
+        if (!activeUsers.contains(request.getCompanionLogin())) {
+            responseObserver.onNext(CompanionStatus.newBuilder()
+                    .setCompanionLogin(request.getCompanionLogin())
+                    .setStatus(false)
+                    .build());
+            responseObserver.onCompleted();
+            return;
+        }
+
+        if (deleteRoomRequests.containsKey(request.getOwnLogin())) {
             var deletionInitiators = deleteRoomRequests.get(request.getOwnLogin());
             if (deletionInitiators.contains(request.getCompanionLogin())) {
                 responseObserver.onNext(CompanionStatus.newBuilder()
@@ -352,7 +384,9 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
         deletionInitiators.add(request.getOwnLogin());
         deleteRoomRequests.put(request.getCompanionLogin(), deletionInitiators);
 
-        log.debug("User {} initiated deletion of chat with {}", request.getOwnLogin(), request.getCompanionLogin());
+        log.debug("{} -> {}: initiated deletion of chat", request.getOwnLogin(), request.getCompanionLogin());
+        ChatRoom dummyForDeletion = new ChatRoom(request.getOwnLogin(), request.getCompanionLogin(), "", "");
+        rooms.remove(dummyForDeletion);
 
         responseObserver.onNext(CompanionStatus.newBuilder()
                 .setCompanionLogin(request.getCompanionLogin())
@@ -369,8 +403,11 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
             return;
         }
 
-        for (var deletionInitiator : deleteRoomRequests.get(request.getLogin())) {
-            log.debug("User {} has chat deleted with {}", request.getLogin(), deletionInitiator);
+        var requesters = deleteRoomRequests.get(request.getLogin());
+        deleteRoomRequests.remove(request.getLogin());
+
+        for (var deletionInitiator : requesters) {
+            log.debug("{} -> {}: companion deleted chat", request.getLogin(), deletionInitiator);
             responseObserver.onNext(CompanionStatus.newBuilder().setCompanionLogin(deletionInitiator).setStatus(true).build());
         }
 

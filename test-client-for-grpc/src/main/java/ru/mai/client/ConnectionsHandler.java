@@ -68,18 +68,17 @@ public class ConnectionsHandler {
                 }
 
                 companionsAndStatus.put(value.getCompanionLogin(), value.getStatus());
-                log.debug("Companion {} is {}", value.getCompanionLogin(), value.getStatus() ? "online" : "offline");
+                log.debug("{}: Companion {} is {}", userLogin, value.getCompanionLogin(), value.getStatus() ? "online" : "offline");
             }
 
             @Override
             public void onError(Throwable t) {
-                log.error("Error occurred, cause: ", t);
+                log.error("connectRooms: Error occurred, cause: ", t);
                 finishLatch.countDown();
             }
 
             @Override
             public void onCompleted() {
-                log.debug("Connection Rooms stream ended");
                 finishLatch.countDown();
             }
         };
@@ -127,7 +126,7 @@ public class ConnectionsHandler {
 
             @Override
             public void onError(Throwable t) {
-                log.error("Error happened, cause: ", t);
+                log.error("disconnectRooms: Error happened, cause: ", t);
                 finishLatch.countDown();
             }
 

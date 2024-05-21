@@ -16,14 +16,14 @@ service ChatService {
     rpc CheckCompanionStatus(ChatRoomLogins) returns (CompanionStatus);
 
     /*  -------------------------------- INIT / DELETE CHAT ROOM -------------------------------- */
-    rpc InitRoom (InitRoomRequest) returns (InitRoomResponse); // todo: use blocking stub
-    rpc CheckForInitRoomRequest (Login) returns (stream InitRoomResponse); // server ok,
+    rpc InitRoom (InitRoomRequest) returns (InitRoomResponse);
+    rpc CheckForInitRoomRequest (Login) returns (stream InitRoomResponse);
 
-    rpc PassDiffieHellmanNumber (stream DiffieHellmanNumber) returns (Empty); // edited server
-    rpc AnyDiffieHellmanNumber (Login) returns (stream DiffieHellmanNumber); // server ok,
+        rpc PassDiffieHellmanNumber (stream DiffieHellmanNumber) returns (Empty);
+    rpc AnyDiffieHellmanNumber (Login) returns (stream DiffieHellmanNumber);
 
-    rpc DeleteRoom (ChatRoomLogins) returns (CompanionStatus); // todo: use blocking stub
-    rpc CheckForDeletedRoom (Login) returns (stream CompanionStatus); // server ok
+    rpc DeleteRoom (ChatRoomLogins) returns (CompanionStatus);
+    rpc CheckForDeletedRoom (Login) returns (stream CompanionStatus);
 
     /*  -------------------------------- CONNECT/DISCONNECT -------------------------------- */
     //    rpc ConnectRoom (ChatRoom) returns (CompanionLogin); // returns status (if connected, not empty)
