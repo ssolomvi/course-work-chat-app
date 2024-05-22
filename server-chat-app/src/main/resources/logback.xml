@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <configuration>
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -10,11 +9,24 @@
         </encoder>
     </appender>
 
-    <root level="DEBUG">
+    <logger name="ru.mai" level="DEBUG" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <logger name="org" level="ERROR" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <logger name="tc" level="ERROR" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <logger name="com" level="ERROR" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <root level="INFO">
         <appender-ref ref="CONSOLE"/>
     </root>
-    <logger name="org.apache.kafka" level="WARN"/>
-    <logger name="org.jooq" level="WARN"/>
-    <logger name="com.zaxxer" level="WARN"/>
 
 </configuration>
