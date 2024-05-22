@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import ru.mai.encryption_algorithm.EncryptionAlgorithm;
 import ru.mai.encryption_algorithm.impl.DEAL;
 import ru.mai.encryption_algorithm.impl.DES;
+import ru.mai.encryption_algorithm.impl.LOKI97;
 import ru.mai.encryption_algorithm.impl.Rijndael;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.encryption_context.SymmetricEncryptionContextImpl;
@@ -107,12 +108,13 @@ public class EncryptionDecryptionTests {
         byte[] keyDEAL32 = "veryVeryVeryVeryVerSecureKeyYeah".getBytes(StandardCharsets.UTF_8);
 
         // init algorithm
-        int countAlgorithmsVariations = 4;
+        int countAlgorithmsVariations = 5;
         EncryptionAlgorithm[] algorithms = new EncryptionAlgorithm[countAlgorithmsVariations];
         algorithms[0] = new DES(keyDES);
         algorithms[1] = new DEAL(keyDEAL16);
         algorithms[2] = new DEAL(keyDEAL24);
         algorithms[3] = new DEAL(keyDEAL32);
+        algorithms[4] = new LOKI97(keyDEAL16);
 
         // init initVector
         byte[] initVector8 = "initVect".getBytes(StandardCharsets.UTF_8);
@@ -151,12 +153,13 @@ public class EncryptionDecryptionTests {
         byte[] key32 = "veryVeryVeryVeryVerSecureKeyYeah".getBytes(StandardCharsets.UTF_8);
 
         // init algorithm
-        int countAlgorithmsVariations = 4;
+        int countAlgorithmsVariations = 5;
         EncryptionAlgorithm[] algorithms = new EncryptionAlgorithm[countAlgorithmsVariations];
         algorithms[0] = new DES(keyDES);
         algorithms[1] = new DEAL(key16);
         algorithms[2] = new DEAL(key24);
         algorithms[3] = new DEAL(key32);
+        algorithms[4] = new LOKI97(key16);
 
         // init initVector
         byte[] initVector8 = "initVect".getBytes(StandardCharsets.UTF_8);

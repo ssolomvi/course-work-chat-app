@@ -2,9 +2,9 @@ package ru.mai.encryption_algorithm.impl;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.mai.cipher.FeistelCipher;
+import ru.mai.cipher.FeistelCipherDES;
 import ru.mai.encryption_algorithm.EncryptionAlgorithmForDESAndDEAL;
-import ru.mai.encryption_conversion.EncryptionConversionFeistelFunction;
+import ru.mai.encryption_conversion.EncryptionConversionFeistelFunctionDES;
 import ru.mai.exceptions.IllegalArgumentExceptionWithLog;
 import ru.mai.round_keys.DES.RoundKeyGenerationDESDirect;
 import ru.mai.round_keys.DES.RoundKeyGenerationDESInverse;
@@ -14,8 +14,8 @@ import ru.mai.utils.Permutation;
 public class DES extends EncryptionAlgorithmForDESAndDEAL {
     private static final Logger log = LoggerFactory.getLogger(DES.class);
     private int roundCount = 16;
-    private final FeistelCipher cipherEncryption;
-    private final FeistelCipher cipherDecryption;
+    private final FeistelCipherDES cipherEncryption;
+    private final FeistelCipherDES cipherDecryption;
     public static final int BLOCK_LENGTH = 8;
     public static final int KEY_SIZE = 7;
 
@@ -34,8 +34,8 @@ public class DES extends EncryptionAlgorithmForDESAndDEAL {
         }
         this.roundCount = roundCount;
 
-        this.cipherEncryption = new FeistelCipher(new RoundKeyGenerationDESDirect(), new EncryptionConversionFeistelFunction(), key);
-        this.cipherDecryption = new FeistelCipher(new RoundKeyGenerationDESInverse(), new EncryptionConversionFeistelFunction(), key);
+        this.cipherEncryption = new FeistelCipherDES(new RoundKeyGenerationDESDirect(), new EncryptionConversionFeistelFunctionDES(), key);
+        this.cipherDecryption = new FeistelCipherDES(new RoundKeyGenerationDESInverse(), new EncryptionConversionFeistelFunctionDES(), key);
     }
 
     /**
@@ -48,8 +48,8 @@ public class DES extends EncryptionAlgorithmForDESAndDEAL {
             throw new IllegalArgumentExceptionWithLog("Key in DES must be of size 7", log);
         }
 
-        this.cipherEncryption = new FeistelCipher(new RoundKeyGenerationDESDirect(), new EncryptionConversionFeistelFunction(), key);
-        this.cipherDecryption = new FeistelCipher(new RoundKeyGenerationDESInverse(), new EncryptionConversionFeistelFunction(), key);
+        this.cipherEncryption = new FeistelCipherDES(new RoundKeyGenerationDESDirect(), new EncryptionConversionFeistelFunctionDES(), key);
+        this.cipherDecryption = new FeistelCipherDES(new RoundKeyGenerationDESInverse(), new EncryptionConversionFeistelFunctionDES(), key);
     }
 
     /**

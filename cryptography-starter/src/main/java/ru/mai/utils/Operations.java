@@ -1,7 +1,12 @@
 package ru.mai.utils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.mai.exceptions.IllegalArgumentExceptionWithLog;
+
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -10,6 +15,7 @@ import java.util.StringJoiner;
 
 public class Operations {
     private static final Random random = new Random();
+    private static final Logger log = LoggerFactory.getLogger(Operations.class);
 
     public static byte[][] reverseArrayOfArray(byte[][] bytes) {
         byte[][] reversed = bytes.clone();
@@ -320,6 +326,148 @@ public class Operations {
             }
         }
         return true;
+    }
+
+    public static byte[] additionByteArrays(byte[] arr1, byte[] arr2) {
+        if (arr1.length != arr2.length) {
+            throw new IllegalArgumentExceptionWithLog("additionBytesArrays: Params arr1 and arr2 " +
+                    "must be the same length", log);
+        }
+
+        int arrLength = arr1.length;
+
+        byte[] signedArr1 = new byte[arrLength + 1];
+        byte[] signedArr2 = new byte[arrLength + 1];
+
+        System.arraycopy(arr1, 0, signedArr1, 1, arrLength);
+        System.arraycopy(arr2, 0, signedArr2, 1, arrLength);
+        BigInteger number1 = new BigInteger(signedArr1);
+        BigInteger number2 = new BigInteger(signedArr2);
+
+        BigInteger resultBigInteger = number1.add(number2);
+        byte[] resultByteArray = resultBigInteger.toByteArray();
+
+        // 1) если длина оказалась меньше нужной, добиваем слева ноликами
+        // 2) если длина оказалась больше нужной, срезаем лишние байты слева
+        byte[] toResult = new byte[arrLength];
+        int resultByteArrayLength = resultByteArray.length;
+        int diffLengths = resultByteArrayLength - arrLength;
+        if (diffLengths < 0) {
+            diffLengths = -diffLengths;
+            System.arraycopy(resultByteArray, 0, toResult, diffLengths, resultByteArrayLength);
+        } else if (diffLengths > 0) {
+            System.arraycopy(resultByteArray, diffLengths, toResult, 0, arrLength);
+        } else {
+            toResult = resultByteArray;
+        }
+
+        return toResult;
+    }
+    public static byte[] subtractionByteArrays(byte[] arr1, byte[] arr2) {
+        if (arr1.length != arr2.length) {
+            throw new IllegalArgumentExceptionWithLog("subtractionByteArrays: Params arr1 and arr2 " +
+                    "must be the same length", log);
+        }
+
+        int arrLength = arr1.length;
+
+        byte[] signedArr1 = new byte[arrLength + 1];
+        byte[] signedArr2 = new byte[arrLength + 1];
+
+        System.arraycopy(arr1, 0, signedArr1, 1, arrLength);
+        System.arraycopy(arr2, 0, signedArr2, 1, arrLength);
+        BigInteger number1 = new BigInteger(signedArr1);
+        BigInteger number2 = new BigInteger(signedArr2);
+
+        BigInteger resultBigInteger = number1.subtract(number2);
+        byte[] resultByteArray = resultBigInteger.toByteArray();
+
+        // 1) если длина оказалась меньше нужной, добиваем слева ноликами
+        // 2) если длина оказалась больше нужной, срезаем лишние байты слева
+        byte[] toResult = new byte[arrLength];
+        int resultByteArrayLength = resultByteArray.length;
+        int diffLengths = resultByteArrayLength - arrLength;
+        if (diffLengths < 0) {
+            diffLengths = -diffLengths;
+            System.arraycopy(resultByteArray, 0, toResult, diffLengths, resultByteArrayLength);
+        } else if (diffLengths > 0) {
+            System.arraycopy(resultByteArray, diffLengths, toResult, 0, arrLength);
+        } else {
+            toResult = resultByteArray;
+        }
+
+        return toResult;
+    }
+    public static byte[] additionByteArrayAndBigInteger(byte[] arr, BigInteger number) {
+        int arrLength = arr.length;
+
+        byte[] signedArr = new byte[arrLength + 1];
+
+        System.arraycopy(arr, 0, signedArr, 1, arrLength);
+        BigInteger number1 = new BigInteger(signedArr);
+        BigInteger number2 = number;
+
+        BigInteger resultBigInteger = number1.add(number2);
+        byte[] resultByteArray = resultBigInteger.toByteArray();
+
+        // 1) если длина оказалась меньше нужной, добиваем слева ноликами
+        // 2) если длина оказалась больше нужной, срезаем лишние байты слева
+        byte[] toResult = new byte[arrLength];
+        int resultByteArrayLength = resultByteArray.length;
+        int diffLengths = resultByteArrayLength - arrLength;
+        if (diffLengths < 0) {
+            diffLengths = -diffLengths;
+            System.arraycopy(resultByteArray, 0, toResult, diffLengths, resultByteArrayLength);
+        } else if (diffLengths > 0) {
+            System.arraycopy(resultByteArray, diffLengths, toResult, 0, arrLength);
+        } else {
+            toResult = resultByteArray;
+        }
+
+        return toResult;
+    }
+
+    public static byte[] negate(byte[] arr) {
+        int arrLength = arr.length;
+        byte[] result = new byte[arrLength];
+
+        for (int i = 0; i < arrLength; i++) {
+            result[i] = (byte) (~arr[i] & 0xff);
+        }
+
+        return result;
+    }
+
+    public static byte[] and(byte[] arr1, byte[] arr2) {
+        if (arr1.length != arr2.length) {
+            throw new IllegalArgumentExceptionWithLog("and: Params arr1 and arr2 " +
+                    "must be the same length", log);
+        }
+
+        int arrLength = arr1.length;
+        byte[] result = new byte[arrLength];
+
+        for (int i = 0; i < arrLength; i++) {
+            result[i] = (byte) (arr1[i] & 0xff & arr2[i] );
+        }
+
+        return result;
+    }
+
+    public static byte[] or(byte[] arr1, byte[] arr2) {
+        if (arr1.length != arr2.length) {
+            throw new IllegalArgumentExceptionWithLog("or: Params arr1 and arr2 " +
+                    "must be the same length", log);
+        }
+
+        int arrLength = arr1.length;
+        byte[] result = new byte[arrLength];
+
+        for (int i = 0; i < arrLength; i++) {
+            result[i] = (byte) (arr1[i] & 0xff | arr2[i]);
+        }
+
+        return result;
     }
 
     private Operations() {

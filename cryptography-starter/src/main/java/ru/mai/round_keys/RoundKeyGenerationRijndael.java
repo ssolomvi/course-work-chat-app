@@ -1,9 +1,8 @@
-package ru.mai.round_keys.Rijndael;
+package ru.mai.round_keys;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mai.exceptions.IllegalArgumentExceptionWithLog;
-import ru.mai.round_keys.RoundKeyGeneration;
 import ru.mai.utils.GaloisFieldPolynomialOperations;
 import ru.mai.utils.Operations;
 
