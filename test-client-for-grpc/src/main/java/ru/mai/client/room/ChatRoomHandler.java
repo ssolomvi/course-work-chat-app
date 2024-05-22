@@ -3,7 +3,10 @@ package ru.mai.client.room;
 import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
 import ru.mai.*;
+import ru.mai.encryption_algorithm.EncryptionAlgorithm;
 import ru.mai.encryption_context.EncryptionContext;
+import ru.mai.encryption_mode.EncryptionModeEnum;
+import ru.mai.encryption_padding_mode.PaddingModeEnum;
 import ru.mai.utils.MathOperationsBigInteger;
 import ru.mai.utils.Operations;
 import ru.mai.utils.Pair;
@@ -20,7 +23,6 @@ public class ChatRoomHandler {
     private static final int DIFFIE_HELLMAN_NUMBER_SIZE = 50;
     private final String userLogin;
     private final Login login;
-    private final ChatServiceGrpc.ChatServiceStub asyncStub;
     private final ChatServiceGrpc.ChatServiceBlockingStub blockingStub;
     private final BigInteger diffieHellmanG;
 
@@ -33,9 +35,8 @@ public class ChatRoomHandler {
     private final Map<String, Pair<InitRoomResponse, BigInteger>> metadataAfterInit = new ConcurrentHashMap<>();
     private final EncryptionContextBuilderOfInitRoomResponse contextBuilder = new EncryptionContextBuilderOfInitRoomResponse();
 
-    public ChatRoomHandler(String userLogin, ChatServiceGrpc.ChatServiceBlockingStub blockingStub, ChatServiceGrpc.ChatServiceStub asyncStub, BigInteger diffieHellmanG) {
+    public ChatRoomHandler(String userLogin, ChatServiceGrpc.ChatServiceBlockingStub blockingStub, BigInteger diffieHellmanG) {
         this.userLogin = userLogin;
-        this.asyncStub = asyncStub;
         this.blockingStub = blockingStub;
         this.login = Login.newBuilder().setLogin(userLogin).build();
         this.diffieHellmanG = diffieHellmanG;
@@ -111,7 +112,7 @@ public class ChatRoomHandler {
         }
 
         try {
-            for (var metadata: metadataAfterInit.entrySet()) {
+            for (var metadata : metadataAfterInit.entrySet()) {
                 // A = g^a mod p
                 BigInteger numberToPass = getDiffieHellmanNumber(metadata.getValue().getValue(),
                         new BigInteger(metadata.getValue().getKey().getDiffieHellmanP()));
@@ -149,6 +150,7 @@ public class ChatRoomHandler {
                 log.debug("{} <- {}: got number {}", userLogin, companionNumber.getCompanionLogin(), companionNumber.getNumber());
                 // todo: insert into db new value (companion_login, encryption_mode, padding_mode, algorithm, init_vector, key)
                 Pair<InitRoomResponse, BigInteger> metadata = metadataAfterInit.get(companionNumber.getCompanionLogin());
+
                 // key = B ^ a mod P
                 byte[] key = getKey(
                         new BigInteger(companionNumber.getNumber()), // companion number, B

@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 public class AnotherClientApplication {
     private static final String TARGET = "localhost:50051";
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void amogus(String[] args) throws InterruptedException {
         ManagedChannel channel = Grpc.newChannelBuilder(TARGET, InsecureChannelCredentials.create())
                 .build();
 
