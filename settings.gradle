@@ -4,4 +4,5 @@ include 'server'
 include 'cryptography-starter'
 include 'test-client-for-grpc'
 include 'test-client-for-kafka'
+include 'client'
 

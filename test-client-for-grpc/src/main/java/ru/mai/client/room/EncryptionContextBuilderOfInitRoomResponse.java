@@ -21,7 +21,7 @@ import java.nio.charset.StandardCharsets;
 @Slf4j
 @Service
 public class EncryptionContextBuilderOfInitRoomResponse {
-    private static final int LEN_BLOCK_FOR_RIJNDAEL = 24; // options: 16, 24, 32
+    private static final int LEN_BLOCK_FOR_RIJNDAEL = Rijndael.KEY_LENGTH24;
     private static final int KEY_LENGTH_FOR_DEAL = DEAL.KEY_LENGTH24;
     private static final int KEY_LENGTH_FOR_RIJNDAEL = Rijndael.KEY_LENGTH24;
 //    private static final int KEY_LENGTH_FOR_LOKI97 = LOKI97.KEY_LENGTH24;

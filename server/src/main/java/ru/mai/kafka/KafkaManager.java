@@ -30,6 +30,7 @@ public class KafkaManager {
     private static final Map<String, String> TOPIC_CONFIG = Map.of(TopicConfig.RETENTION_MS_CONFIG, String.valueOf(60 * 60 * 1000)); // for an hour
     private static final int WAIT_AT_MOST_SEC = 30;
     private static final String TOPIC_PREFIX = "chat_app_topic";
+    private static final Integer FILE_PAGE_SIZE = 4092;
 
     private static final AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS));
     private static KafkaProducer<String, String> producer;
@@ -54,9 +55,13 @@ public class KafkaManager {
 
     public static KafkaProducer<String, String> createKafkaProducer() {
         if (producer == null) {
+            int maxRequestSize = FILE_PAGE_SIZE >= 2000 ? FILE_PAGE_SIZE + FILE_PAGE_SIZE / 10 : FILE_PAGE_SIZE + 150;
+            String maxRequestSizeConfig = Integer.toString(maxRequestSize);
+
             producer = new KafkaProducer<>(
                     Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS,
-                            ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString()),
+                            ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString(),
+                            ProducerConfig.MAX_REQUEST_SIZE_CONFIG, maxRequestSizeConfig),
                     new StringSerializer(),
                     new StringSerializer());
         }

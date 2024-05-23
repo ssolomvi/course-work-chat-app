@@ -13,7 +13,6 @@ import ru.mai.repositories.DiffieHellmanNumbersRepository;
 import ru.mai.util.InitRoomResponseBuilder;
 
 @Slf4j
-//@GrpcService
 @Component
 public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
     private static final String DIFFIE_HELLMAN_G = "88005553535";
@@ -203,12 +202,15 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
             messageHandler.sendMessage(request.getCompanionLogin(), request.getKafkaMessage());
             log.debug("-> {}: sent message", request.getCompanionLogin());
         }
+        responseObserver.onNext(Empty.getDefaultInstance());
+        responseObserver.onCompleted();
     }
 
     @Override
     public void anyMessages(Login request, StreamObserver<MessageToCompanion> responseObserver) {
         var op = messageHandler.readMessages(request.getLogin());
         if (op.isEmpty()) {
+            log.debug("No messages for {}", request.getLogin());
             responseObserver.onNext(MessageToCompanion.getDefaultInstance());
             responseObserver.onCompleted();
             return;
@@ -217,6 +219,7 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
         var consumerRecords = op.get();
 
         for (var consumerRecord : consumerRecords) {
+            log.debug("{} <- {}: got message", request.getLogin(), consumerRecord.topic());
             responseObserver.onNext(MessageToCompanion.newBuilder()
                     .setCompanionLogin("")
                     .setKafkaMessage(consumerRecord.value())
