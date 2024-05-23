@@ -25,40 +25,30 @@ public class KafkaMessageDeserializer implements Deserializer<KafkaMessage> {
 
         try (DataInputStream dis = new DataInputStream(new ByteArrayInputStream(data))) {
             String messageId = dis.readUTF();
-            Integer numberOfPartitions = dis.readInt();
+            int numberOfPartitions = dis.readInt();
             if (numberOfPartitions == -1) {
                 numberOfPartitions = 0;
+            }
+            String sender = dis.readUTF();
+            if (sender.isEmpty()) {
+                sender = "";
             }
             String fileName = dis.readUTF();
             if (fileName.isEmpty()) {
                 fileName = "";
             }
-            Integer currIndex = dis.readInt();
+            int currIndex = dis.readInt();
             if (currIndex == -1) {
                 currIndex = 0;
             }
             byte[] value = new byte[dis.available()];
             dis.readFully(value);
-            return new KafkaMessage(UUID.fromString(messageId), fileName, numberOfPartitions, currIndex, value);
+            return new KafkaMessage(UUID.fromString(messageId), sender, fileName, numberOfPartitions, currIndex, value);
         } catch (IOException e) {
             throw new SerializationException("Error deserializing KafkaMessage", e);
         }
         // Ignore close exception
     }
-
-    /*
-    @Override
-    public KafkaMessage deserialize(String topic, byte[] data) {
-        KafkaMessage message;
-
-        try {
-             message = mapper.readValue(new String(data), KafkaMessage.class);
-        } catch (JsonProcessingException e) {
-            throw new SerializationException("Error deserializing KafkaMessage object: " + e.getMessage());
-        }
-        return message;
-    }
-     */
 
     @Override
     public KafkaMessage deserialize(String topic, Headers headers, byte[] data) {

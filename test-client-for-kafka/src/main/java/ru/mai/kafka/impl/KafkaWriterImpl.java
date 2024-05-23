@@ -9,7 +9,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.kafka.KafkaWriter;
 import ru.mai.kafka.serialization.KafkaMessageSerializer;
-import ru.mai.model.KafkaMessage;
+import ru.mai.kafka.model.KafkaMessage;
 
 import java.io.FileInputStream;
 import java.io.IOException;

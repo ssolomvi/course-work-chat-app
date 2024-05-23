@@ -11,6 +11,7 @@ import java.util.UUID;
 @NoArgsConstructor
 public class KafkaMessage {
     private UUID messageId; // generated
+    private String sender;
     private String fileName; // if is a file
     private Integer numberOfPartitions;
     private Integer currIndex;

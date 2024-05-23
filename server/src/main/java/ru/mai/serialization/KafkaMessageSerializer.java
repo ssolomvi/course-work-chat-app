@@ -29,6 +29,7 @@ public class KafkaMessageSerializer implements Serializer<KafkaMessage> {
         try (DataOutputStream dos = new DataOutputStream(outputStream)) {
             dos.writeUTF(data.getMessageId().toString());
             dos.writeInt(data.getNumberOfPartitions() != null ? data.getNumberOfPartitions() : -1);
+            dos.writeUTF(data.getSender() != null ? data.getSender() : "");;
             dos.writeUTF(data.getFileName() != null ? data.getFileName() : "");
             dos.writeInt(data.getCurrIndex() != null ? data.getCurrIndex() : -1);
             dos.write(data.getValue());

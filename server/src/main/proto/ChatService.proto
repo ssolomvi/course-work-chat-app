@@ -10,8 +10,8 @@ service ChatService {
     rpc Connect (Login) returns (ConnectResponse);
     rpc Disconnect (Login) returns (Empty);
 
-    rpc ConnectWithRooms (stream ChatRoomLogins) returns (stream CompanionStatus); // хз
-    rpc DisconnectWithRooms (stream ChatRoomLogins) returns (Empty);
+//    rpc ConnectWithRooms (stream ChatRoomLogins) returns (stream CompanionStatus); // хз
+//    rpc DisconnectWithRooms (stream ChatRoomLogins) returns (Empty);
 
     rpc CheckCompanionStatus(ChatRoomLogins) returns (CompanionStatus);
 
@@ -33,9 +33,9 @@ service ChatService {
     //    rpc AnyDisconnectedRoom (ChatRoom) returns (CompanionLogin);
 
     /*  -------------------------------- SENDING MESSAGES -------------------------------- */
-    rpc SendMessage (MessageWithLogins) returns (Empty);
+    rpc SendMessage (MessageToCompanion) returns (Empty);
 
-    rpc AnyMessages (ChatRoomLogins) returns (stream MessageWithLogins);
+    rpc AnyMessages (Login) returns (stream MessageToCompanion);
 }
 
 /*  -------------------------------- MESSAGES -------------------------------- */
@@ -81,8 +81,7 @@ message ChatRoomLogins {
     string companion_login = 2;
 }
 
-message MessageWithLogins {
-    string own_login = 1;
-    string companion_login = 2;
-    string kafka_message = 3;
+message MessageToCompanion {
+    string companion_login = 1;
+    string kafka_message = 2;
 }

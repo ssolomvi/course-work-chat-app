@@ -8,7 +8,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.kafka.KafkaReader;
 import ru.mai.kafka.serialization.KafkaMessageDeserializer;
-import ru.mai.model.KafkaMessage;
+import ru.mai.kafka.model.KafkaMessage;
 import ru.mai.utils.Pair;
 
 import java.io.IOException;
