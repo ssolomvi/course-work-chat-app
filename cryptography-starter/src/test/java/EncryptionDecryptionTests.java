@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import ru.mai.encryption_algorithm.EncryptionAlgorithm;
 import ru.mai.encryption_algorithm.impl.DEAL;
 import ru.mai.encryption_algorithm.impl.DES;
+import ru.mai.encryption_algorithm.impl.LOKI97;
 import ru.mai.encryption_algorithm.impl.Rijndael;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.encryption_context.SymmetricEncryptionContextImpl;
@@ -102,17 +103,20 @@ public class EncryptionDecryptionTests {
     void fullContextTestByteArray() {
         // init keys
         byte[] keyDES = "secureK".getBytes(StandardCharsets.UTF_8);
-        byte[] keyDEAL16 = "verySecureKeyYea".getBytes(StandardCharsets.UTF_8);
-        byte[] keyDEAL24 = "veryVeryVerySecureKeyYea".getBytes(StandardCharsets.UTF_8);
-        byte[] keyDEAL32 = "veryVeryVeryVeryVerSecureKeyYeah".getBytes(StandardCharsets.UTF_8);
+        byte[] key16 = "verySecureKeyYea".getBytes(StandardCharsets.UTF_8);
+        byte[] key24 = "veryVeryVerySecureKeyYea".getBytes(StandardCharsets.UTF_8);
+        byte[] key32 = "veryVeryVeryVeryVerSecureKeyYeah".getBytes(StandardCharsets.UTF_8);
 
         // init algorithm
-        int countAlgorithmsVariations = 4;
+        int countAlgorithmsVariations = 7;
         EncryptionAlgorithm[] algorithms = new EncryptionAlgorithm[countAlgorithmsVariations];
         algorithms[0] = new DES(keyDES);
-        algorithms[1] = new DEAL(keyDEAL16);
-        algorithms[2] = new DEAL(keyDEAL24);
-        algorithms[3] = new DEAL(keyDEAL32);
+        algorithms[1] = new DEAL(key16);
+        algorithms[2] = new DEAL(key24);
+        algorithms[3] = new DEAL(key32);
+        algorithms[4] = new LOKI97(key16);
+        algorithms[5] = new LOKI97(key24);
+        algorithms[6] = new LOKI97(key32);
 
         // init initVector
         byte[] initVector8 = "initVect".getBytes(StandardCharsets.UTF_8);
@@ -151,12 +155,15 @@ public class EncryptionDecryptionTests {
         byte[] key32 = "veryVeryVeryVeryVerSecureKeyYeah".getBytes(StandardCharsets.UTF_8);
 
         // init algorithm
-        int countAlgorithmsVariations = 4;
+        int countAlgorithmsVariations = 7;
         EncryptionAlgorithm[] algorithms = new EncryptionAlgorithm[countAlgorithmsVariations];
         algorithms[0] = new DES(keyDES);
         algorithms[1] = new DEAL(key16);
         algorithms[2] = new DEAL(key24);
         algorithms[3] = new DEAL(key32);
+        algorithms[4] = new LOKI97(key16);
+        algorithms[5] = new LOKI97(key24);
+        algorithms[6] = new LOKI97(key32);
 
         // init initVector
         byte[] initVector8 = "initVect".getBytes(StandardCharsets.UTF_8);

@@ -7,13 +7,13 @@ import ru.mai.exceptions.IllegalArgumentExceptionWithLog;
 import ru.mai.round_keys.RoundKeyGeneration;
 import ru.mai.utils.Operations;
 
-public class FeistelCipher {
-    private static final Logger log = LoggerFactory.getLogger(FeistelCipher.class);
+public class FeistelCipherDES {
+    private static final Logger log = LoggerFactory.getLogger(FeistelCipherDES.class);
     private final RoundKeyGeneration keyGeneration;
     private final EncryptionConversion encryptionConversion;
     private byte[][] roundKeys;
 
-    public FeistelCipher(RoundKeyGeneration keyGen, EncryptionConversion conversion, byte[] key) {
+    public FeistelCipherDES(RoundKeyGeneration keyGen, EncryptionConversion conversion, byte[] key) {
         if (keyGen == null) {
             throw new IllegalArgumentExceptionWithLog("Passed param keyGen is null", log);
         }
