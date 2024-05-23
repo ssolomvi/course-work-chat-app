@@ -6,38 +6,38 @@ import ru.mai.cipher.FeistelCipherLOKI97;
 import ru.mai.encryption_algorithm.EncryptionAlgorithm;
 import ru.mai.encryption_conversion.EncryptionConversionFeistelFunctionLOKI97;
 import ru.mai.exceptions.IllegalArgumentExceptionWithLog;
-import ru.mai.round_keys.LOKI97.RoundKeyGenerationLOKI97Direct;
+import ru.mai.round_keys.LOKI97.RoundKeyGenerationLOKI97;
 
-// doing LOKI97 for 128 bits key and 128 bit block
 public class LOKI97 implements EncryptionAlgorithm {
     private static final Logger log = LoggerFactory.getLogger(LOKI97.class);
-    private int lenBlock = 16; // in bytes
-    private int lenKey; // in bytes
-    private FeistelCipherLOKI97 cipherEncryption;
-    private FeistelCipherLOKI97 cipherDecryption;
-
+    private final int lenBlock = 16; // in bytes
+    private final int roundCount = 16;
+    private final FeistelCipherLOKI97 cipherEncryption;
+    private final FeistelCipherLOKI97 cipherDecryption;
+    public static final int KEY_LENGTH_LOKI97_16 = 16;
+    public static final int KEY_LENGTH_LOKI97_24 = 24;
+    public static final int KEY_LENGTH_LOKI97_32 = 32;
 
     public LOKI97(byte[] key) {
         int lenKey = key.length;
-        if (!(lenKey == 16 || lenKey == 32)) {
-            throw new IllegalArgumentExceptionWithLog("Key in LOKI07 must be of size 16 or 32", log);
+        if (!(lenKey == 16 || lenKey == 24|| lenKey == 32)) {
+            throw new IllegalArgumentExceptionWithLog("LOKI97: Param key must be of size 16, 24 or 32", log);
         }
 
-        this.lenKey = lenKey;
         EncryptionConversionFeistelFunctionLOKI97 encryptionConversionFeistelFunctionLOKI97 = new EncryptionConversionFeistelFunctionLOKI97();
-        RoundKeyGenerationLOKI97Direct roundKeyGenerationLOKI97Direct = new RoundKeyGenerationLOKI97Direct(encryptionConversionFeistelFunctionLOKI97);
+        RoundKeyGenerationLOKI97 roundKeyGenerationLOKI97Direct = new RoundKeyGenerationLOKI97(encryptionConversionFeistelFunctionLOKI97);
         this.cipherEncryption = new FeistelCipherLOKI97(roundKeyGenerationLOKI97Direct, encryptionConversionFeistelFunctionLOKI97, key);
         this.cipherDecryption = new FeistelCipherLOKI97(roundKeyGenerationLOKI97Direct, encryptionConversionFeistelFunctionLOKI97, key);
     }
 
     @Override
     public byte[] encrypt(byte[] input) {
-        return cipherEncryption.methodForConstructingBlockCiphersEncryption(input, 16);
+        return cipherEncryption.methodForConstructingBlockCiphersEncryption(input, roundCount);
     }
 
     @Override
     public byte[] decrypt(byte[] input) {
-        return cipherDecryption.methodForConstructingBlockCiphersDecryption(input, 16);
+        return cipherDecryption.methodForConstructingBlockCiphersDecryption(input, roundCount);
     }
 
     @Override

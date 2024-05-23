@@ -303,8 +303,6 @@ public class Operations {
         System.out.println(builder);
     }
 
-
-
     public static boolean filesAreEqual(Path f, Path s) throws IOException {
         final long size = Files.size(f);
         if (size != Files.size(s))
@@ -328,24 +326,46 @@ public class Operations {
         return true;
     }
 
+    // region methods for LOKI97
+    public static byte[] longToBytes(long l) {
+        byte[] result = new byte[8];
+        for (int i = 7; i >= 0; i--) {
+            result[i] = (byte)(l & 0xFF);
+            l >>= 8;
+        }
+
+        return result;
+    }
+
+    public static long bytesArrToLong(byte[] arr) {
+        if (arr.length != 8) {
+            throw new IllegalArgumentExceptionWithLog("bytesArrToLong: Param arr " +
+                    "must be the length 8", log);
+        }
+
+        return ((arr[0] & 0xFFL) << 56) |
+                ((arr[1] & 0xFFL) << 48) |
+                ((arr[2] & 0xFFL) << 40) |
+                ((arr[3] & 0xFFL) << 32) |
+                ((arr[4] & 0xFFL) << 24) |
+                ((arr[5] & 0xFFL) << 16) |
+                ((arr[6] & 0xFFL) <<  8) |
+                ((arr[7] & 0xFFL));
+    }
+
     public static byte[] additionByteArrays(byte[] arr1, byte[] arr2) {
-        if (arr1.length != arr2.length) {
-            throw new IllegalArgumentExceptionWithLog("additionBytesArrays: Params arr1 and arr2 " +
-                    "must be the same length", log);
+        if (!(arr1.length == 8 && arr2.length == 8)) {
+            throw new IllegalArgumentExceptionWithLog("additionByteArrays: Params arr1 and arr2 " +
+                    "must be the length 8", log);
         }
 
         int arrLength = arr1.length;
 
-        byte[] signedArr1 = new byte[arrLength + 1];
-        byte[] signedArr2 = new byte[arrLength + 1];
+        long number1 = bytesArrToLong(arr1);
+        long number2 = bytesArrToLong(arr2);
 
-        System.arraycopy(arr1, 0, signedArr1, 1, arrLength);
-        System.arraycopy(arr2, 0, signedArr2, 1, arrLength);
-        BigInteger number1 = new BigInteger(signedArr1);
-        BigInteger number2 = new BigInteger(signedArr2);
-
-        BigInteger resultBigInteger = number1.add(number2);
-        byte[] resultByteArray = resultBigInteger.toByteArray();
+        long resultLong = number1 + number2;
+        byte[] resultByteArray = longToBytes(resultLong);
 
         // 1) если длина оказалась меньше нужной, добиваем слева ноликами
         // 2) если длина оказалась больше нужной, срезаем лишние байты слева
@@ -353,8 +373,7 @@ public class Operations {
         int resultByteArrayLength = resultByteArray.length;
         int diffLengths = resultByteArrayLength - arrLength;
         if (diffLengths < 0) {
-            diffLengths = -diffLengths;
-            System.arraycopy(resultByteArray, 0, toResult, diffLengths, resultByteArrayLength);
+            System.arraycopy(resultByteArray, 0, toResult, -diffLengths, resultByteArrayLength);
         } else if (diffLengths > 0) {
             System.arraycopy(resultByteArray, diffLengths, toResult, 0, arrLength);
         } else {
@@ -363,24 +382,20 @@ public class Operations {
 
         return toResult;
     }
+
     public static byte[] subtractionByteArrays(byte[] arr1, byte[] arr2) {
-        if (arr1.length != arr2.length) {
+        if (!(arr1.length == 8 && arr2.length == 8)) {
             throw new IllegalArgumentExceptionWithLog("subtractionByteArrays: Params arr1 and arr2 " +
-                    "must be the same length", log);
+                    "must be the length 8", log);
         }
 
         int arrLength = arr1.length;
 
-        byte[] signedArr1 = new byte[arrLength + 1];
-        byte[] signedArr2 = new byte[arrLength + 1];
+        long number1 = bytesArrToLong(arr1);
+        long number2 = bytesArrToLong(arr2);
 
-        System.arraycopy(arr1, 0, signedArr1, 1, arrLength);
-        System.arraycopy(arr2, 0, signedArr2, 1, arrLength);
-        BigInteger number1 = new BigInteger(signedArr1);
-        BigInteger number2 = new BigInteger(signedArr2);
-
-        BigInteger resultBigInteger = number1.subtract(number2);
-        byte[] resultByteArray = resultBigInteger.toByteArray();
+        long resultLong = number1 - number2;
+        byte[] resultByteArray = longToBytes(resultLong);
 
         // 1) если длина оказалась меньше нужной, добиваем слева ноликами
         // 2) если длина оказалась больше нужной, срезаем лишние байты слева
@@ -388,8 +403,7 @@ public class Operations {
         int resultByteArrayLength = resultByteArray.length;
         int diffLengths = resultByteArrayLength - arrLength;
         if (diffLengths < 0) {
-            diffLengths = -diffLengths;
-            System.arraycopy(resultByteArray, 0, toResult, diffLengths, resultByteArrayLength);
+            System.arraycopy(resultByteArray, 0, toResult, -diffLengths, resultByteArrayLength);
         } else if (diffLengths > 0) {
             System.arraycopy(resultByteArray, diffLengths, toResult, 0, arrLength);
         } else {
@@ -398,16 +412,46 @@ public class Operations {
 
         return toResult;
     }
+
+    public static byte[] additionByteArrayAndLong(byte[] arr, long number2) {
+        int arrLength = arr.length;
+        if (arrLength != 8) {
+            throw new IllegalArgumentExceptionWithLog("additionByteArrayAndLong: Param arr " +
+                    "must be the length 8", log);
+        }
+
+        long number1 = bytesArrToLong(arr);
+
+        long resultLong = number1 + number2;
+        byte[] resultByteArray = longToBytes(resultLong);
+
+        // 1) если длина оказалась меньше нужной, добиваем слева ноликами
+        // 2) если длина оказалась больше нужной, срезаем лишние байты слева
+        byte[] toResult = new byte[arrLength];
+        int resultByteArrayLength = resultByteArray.length;
+        int diffLengths = resultByteArrayLength - arrLength;
+        if (diffLengths < 0) {
+            System.arraycopy(resultByteArray, 0, toResult, -diffLengths, resultByteArrayLength);
+        } else if (diffLengths > 0) {
+            System.arraycopy(resultByteArray, diffLengths, toResult, 0, arrLength);
+        } else {
+            toResult = resultByteArray;
+        }
+
+        return toResult;
+    }
+
     public static byte[] additionByteArrayAndBigInteger(byte[] arr, BigInteger number) {
         int arrLength = arr.length;
 
         byte[] signedArr = new byte[arrLength + 1];
 
         System.arraycopy(arr, 0, signedArr, 1, arrLength);
-        BigInteger number1 = new BigInteger(signedArr);
-        BigInteger number2 = number;
+        BigInteger numberArr = new BigInteger(signedArr);
+        BigInteger powTwo64 = BigInteger.TWO.pow(64);
 
-        BigInteger resultBigInteger = number1.add(number2);
+        BigInteger resultBigInteger = numberArr.add(number);
+        resultBigInteger = resultBigInteger.remainder(powTwo64);
         byte[] resultByteArray = resultBigInteger.toByteArray();
 
         // 1) если длина оказалась меньше нужной, добиваем слева ноликами
@@ -416,8 +460,7 @@ public class Operations {
         int resultByteArrayLength = resultByteArray.length;
         int diffLengths = resultByteArrayLength - arrLength;
         if (diffLengths < 0) {
-            diffLengths = -diffLengths;
-            System.arraycopy(resultByteArray, 0, toResult, diffLengths, resultByteArrayLength);
+            System.arraycopy(resultByteArray, 0, toResult, -diffLengths, resultByteArrayLength);
         } else if (diffLengths > 0) {
             System.arraycopy(resultByteArray, diffLengths, toResult, 0, arrLength);
         } else {
@@ -426,6 +469,8 @@ public class Operations {
 
         return toResult;
     }
+
+    // endregion
 
     public static byte[] negate(byte[] arr) {
         int arrLength = arr.length;
@@ -437,7 +482,6 @@ public class Operations {
 
         return result;
     }
-
     public static byte[] and(byte[] arr1, byte[] arr2) {
         if (arr1.length != arr2.length) {
             throw new IllegalArgumentExceptionWithLog("and: Params arr1 and arr2 " +
@@ -453,7 +497,6 @@ public class Operations {
 
         return result;
     }
-
     public static byte[] or(byte[] arr1, byte[] arr2) {
         if (arr1.length != arr2.length) {
             throw new IllegalArgumentExceptionWithLog("or: Params arr1 and arr2 " +

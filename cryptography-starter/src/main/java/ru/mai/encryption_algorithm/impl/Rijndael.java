@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mai.encryption_algorithm.EncryptionAlgorithm;
 import ru.mai.exceptions.IllegalArgumentExceptionWithLog;
-import ru.mai.round_keys.RoundKeyGenerationRijndael;
+import ru.mai.round_keys.Rijndael.RoundKeyGenerationRijndael;
 import ru.mai.utils.GaloisFieldPolynomialOperations;
 import ru.mai.utils.Operations;
 
