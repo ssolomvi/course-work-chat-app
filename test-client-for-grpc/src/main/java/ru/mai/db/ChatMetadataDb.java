@@ -1,13 +1,18 @@
 package ru.mai.db;
 
-import org.hibernate.annotations.Type;
+import jakarta.persistence.*;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 import ru.mai.encryption_mode.EncryptionModeEnum;
 import ru.mai.encryption_padding_mode.PaddingModeEnum;
 
-import javax.persistence.*;
 
 @Entity
 @Table(name = "chat_metadata")
+@Setter
+@Getter
+@Builder
 public class ChatMetadataDb {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,13 +29,11 @@ public class ChatMetadataDb {
     private PaddingModeEnum paddingMode;
 
     @Column(name = "algorithm")
-    private PaddingModeEnum algorithm;
+    private String algorithm;
 
-    @Column(name = "init_vector")
-    @Type(type = "org.hibernate.type.RowVersionType")
+    @Column(name = "init_vector", columnDefinition = "bytea")
     private byte[] initVector;
 
-    @Column(name = "key")
-    @Type(type = "org.hibernate.type.RowVersionType")
+    @Column(name = "key", columnDefinition = "bytea")
     private byte[] key;
 }

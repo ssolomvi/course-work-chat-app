@@ -2,11 +2,9 @@ package ru.mai.client.room;
 
 import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import ru.mai.*;
-import ru.mai.encryption_algorithm.EncryptionAlgorithm;
 import ru.mai.encryption_context.EncryptionContext;
-import ru.mai.encryption_mode.EncryptionModeEnum;
-import ru.mai.encryption_padding_mode.PaddingModeEnum;
 import ru.mai.utils.MathOperationsBigInteger;
 import ru.mai.utils.Operations;
 import ru.mai.utils.Pair;
@@ -35,11 +33,15 @@ public class ChatRoomHandler {
     private final Map<String, Pair<InitRoomResponse, BigInteger>> metadataAfterInit = new ConcurrentHashMap<>();
     private final EncryptionContextBuilderOfInitRoomResponse contextBuilder = new EncryptionContextBuilderOfInitRoomResponse();
 
-    public ChatRoomHandler(String userLogin, ChatServiceGrpc.ChatServiceBlockingStub blockingStub, BigInteger diffieHellmanG) {
+    public ChatRoomHandler(String userLogin,
+                           ChatServiceGrpc.ChatServiceBlockingStub blockingStub,
+                           BigInteger diffieHellmanG
+                           /*@Autowired EncryptionContextBuilderOfInitRoomResponse contextBuilder*/) {
         this.userLogin = userLogin;
         this.blockingStub = blockingStub;
         this.login = Login.newBuilder().setLogin(userLogin).build();
         this.diffieHellmanG = diffieHellmanG;
+//        this.contextBuilder = contextBuilder;
     }
 
 

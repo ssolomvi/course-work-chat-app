@@ -1,4 +1,4 @@
-package ru.mai.model;
+package ru.mai.client.kafka.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

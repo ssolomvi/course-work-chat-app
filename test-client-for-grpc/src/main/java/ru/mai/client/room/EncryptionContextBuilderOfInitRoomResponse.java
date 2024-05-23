@@ -1,6 +1,12 @@
 package ru.mai.client.room;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import ru.mai.InitRoomResponse;
+import ru.mai.db.ChatMetadataDb;
+import ru.mai.db.repositories.ChatMetadataDbRepository;
+import ru.mai.db.service.ChatMetadataDbService;
 import ru.mai.encryption_algorithm.EncryptionAlgorithm;
 import ru.mai.encryption_algorithm.impl.DEAL;
 import ru.mai.encryption_algorithm.impl.DES;
@@ -12,8 +18,20 @@ import ru.mai.encryption_padding_mode.PaddingModeEnum;
 
 import java.nio.charset.StandardCharsets;
 
+@Slf4j
+@Service
 public class EncryptionContextBuilderOfInitRoomResponse {
     private static final int LEN_BLOCK_FOR_RIJNDAEL = 24; // options: 16, 24, 32
+    private static final int KEY_LENGTH_FOR_DEAL = DEAL.KEY_LENGTH24;
+    private static final int KEY_LENGTH_FOR_RIJNDAEL = Rijndael.KEY_LENGTH24;
+//    private static final int KEY_LENGTH_FOR_LOKI97 = LOKI97.KEY_LENGTH24;
+
+    @Autowired
+    private ChatMetadataDbService service;
+
+    public EncryptionContextBuilderOfInitRoomResponse() {
+//        this.service = service;
+    }
 
     private EncryptionModeEnum getEncryptionModeEnum(String encModeStr) {
         return switch (encModeStr) {
@@ -54,11 +72,11 @@ public class EncryptionContextBuilderOfInitRoomResponse {
     private EncryptionAlgorithm getEncryptionAlgorithm(String algorithm, byte[] key) {
         switch (algorithm) {
             case "DEAL": {
-                byte[] normalizedKey = normalizeKey(key, DEAL.KEY_LENGTH24);
+                byte[] normalizedKey = normalizeKey(key, KEY_LENGTH_FOR_DEAL);
                 return new DEAL(normalizedKey);
             }
             case "Rijndael": {
-                byte[] normalizedKey = normalizeKey(key, Rijndael.KEY_LENGTH24);
+                byte[] normalizedKey = normalizeKey(key, KEY_LENGTH_FOR_RIJNDAEL);
                 return new Rijndael(normalizedKey, (byte) 27, LEN_BLOCK_FOR_RIJNDAEL);
             }
 //            case "LOKI97" : {
@@ -83,7 +101,17 @@ public class EncryptionContextBuilderOfInitRoomResponse {
                                           String algorithm,
                                           byte[] initVector,
                                           byte[] key) {
-        // todo: insert in db with spring data jpa
+        ChatMetadataDb metadata = ChatMetadataDb.builder()
+                .companion(companion)
+                .encryptionMode(encMode)
+                .paddingMode(padMode)
+                .algorithm(algorithm)
+                .initVector(initVector)
+                .key(key)
+                .build();
+
+        service.save(metadata);
+        log.debug("companion {} chat info saved to db?", companion);
     }
 
     public EncryptionContext buildEncryptionContext(InitRoomResponse response, byte[] key) {
@@ -91,16 +119,20 @@ public class EncryptionContextBuilderOfInitRoomResponse {
         PaddingModeEnum paddingMode = getPaddingModeEnum(response.getPaddingMode());
 
         if (encryptionMode.needsInitVector()) {
-            saveChatRoomMetadataToDb(response.getCompanionLogin(), encryptionMode, paddingMode,
-                    response.getAlgorithm(), response.getInitVector().getBytes(StandardCharsets.UTF_8), key);
+            // todo: ask Vlad
+//            saveChatRoomMetadataToDb(response.getCompanionLogin(), encryptionMode, paddingMode,
+//                    response.getAlgorithm(), response.getInitVector().getBytes(StandardCharsets.UTF_8), key);
+
             return new SymmetricEncryptionContextImpl(
                     encryptionMode,
                     paddingMode,
                     getEncryptionAlgorithm(response.getAlgorithm(), key),
                     response.getInitVector().getBytes(StandardCharsets.UTF_8));
         }
-        saveChatRoomMetadataToDb(response.getCompanionLogin(), encryptionMode, paddingMode, response.getAlgorithm(),
-                null, key);
+
+//        saveChatRoomMetadataToDb(response.getCompanionLogin(), encryptionMode, paddingMode, response.getAlgorithm(),
+//                null, key);
+
         return new SymmetricEncryptionContextImpl(
                 encryptionMode,
                 paddingMode,
