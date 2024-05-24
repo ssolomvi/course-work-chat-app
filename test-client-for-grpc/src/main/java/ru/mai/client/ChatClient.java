@@ -48,7 +48,7 @@ public class ChatClient implements AutoCloseable {
         } else {
             this.companionsStatuses = new ConcurrentHashMap<>();
         }
-        this.chatRoomHandler = new ChatRoomHandler(login, stub, asyncStub, diffieHellmanG);
+        this.chatRoomHandler = new ChatRoomHandler(login, stub, diffieHellmanG);
 
         pingServer();
     }

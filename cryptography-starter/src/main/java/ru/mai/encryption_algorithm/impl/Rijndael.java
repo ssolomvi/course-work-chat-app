@@ -20,6 +20,9 @@ public class Rijndael implements EncryptionAlgorithm {
     public byte[] sBox;
     public byte[] sBoxInverse;
     private byte[][] roundKeys; // array of words (columns)
+    public static final int KEY_LENGTH16 = 16;
+    public static final int KEY_LENGTH24 = 24;
+    public static final int KEY_LENGTH32 = 32;
 
     /**
      * Rijndael constructor.

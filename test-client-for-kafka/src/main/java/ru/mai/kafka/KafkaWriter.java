@@ -1,7 +1,7 @@
 package ru.mai.kafka;
 
 
-import ru.mai.model.KafkaMessage;
+import ru.mai.kafka.model.KafkaMessage;
 
 import java.io.IOException;
 import java.nio.file.Path;

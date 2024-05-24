@@ -18,10 +18,7 @@ import ru.mai.encryption_padding_mode.impl.Zeroes;
 import ru.mai.exceptions.IllegalArgumentExceptionWithLog;
 import ru.mai.exceptions.IllegalMethodCallException;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -61,6 +58,8 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
     private final int algorithmBlockLengthForDecryption; // block length to pass in decrypt method
     private static final int FILE_PAGE_SIZE = 8092;
     private static final int ONE_THREAD_BLOCK_SIZE = 1024; // size of byte array to pass for one thread to work on
+    private final int filePageSizeModified;
+
 
     // region Constructing EncryptionContextAbstract
     public SymmetricEncryptionContextImpl(EncryptionModeEnum encryptionModeEnum, PaddingModeEnum paddingModeEnum, EncryptionAlgorithm algorithm) {
@@ -85,6 +84,8 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
 
         this.encryptionMode = getEncryptionMode(encryptionModeEnum, algorithm, null);
         this.paddingMode = getPaddingMode(paddingModeEnum);
+
+        this.filePageSizeModified = FILE_PAGE_SIZE / algorithmBlockLengthForEncryption * algorithmBlockLengthForEncryption;
     }
 
     public SymmetricEncryptionContextImpl(EncryptionModeEnum encryptionModeEnum, PaddingModeEnum paddingModeEnum, EncryptionAlgorithm algorithm, byte[] initializationVector) {
@@ -109,6 +110,8 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
 
         this.encryptionMode = getEncryptionMode(encryptionModeEnum, algorithm, initializationVector);
         this.paddingMode = getPaddingMode(paddingModeEnum);
+
+        this.filePageSizeModified = FILE_PAGE_SIZE / algorithmBlockLengthForEncryption * algorithmBlockLengthForEncryption;
     }
 
     private EncryptionMode getEncryptionMode(EncryptionModeEnum encryptionModeEnum,
@@ -180,6 +183,7 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
     }
 
     // region Encryption
+
     /**
      * Encrypts {@code toEncrypt} which is guaranteed to be multiple of {@code algorithm block}.
      *
@@ -345,8 +349,6 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
         // modify file page size, so we always get file part which is multiple for getAlgorithmBlock()
         // and there is no need to check for padding needed each time
 
-        int filePageSizeModified = FILE_PAGE_SIZE / algorithmBlockLengthForEncryption * algorithmBlockLengthForEncryption;
-
         try (FileInputStream inputStream = new FileInputStream(input.toFile())) {
             try (FileOutputStream outputStream = new FileOutputStream(output.toFile())) {
                 byte[] toEncrypt = new byte[filePageSizeModified];
@@ -378,6 +380,41 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
         } catch (IOException e) {
             log.error("Carrramba! An I/O error occurred");
             throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void encrypt(String fileName, InputStream input) {
+        if (encryptionMode instanceof EncryptionModeWithInitVector encryptionModeWithInitVector) {
+            encryptionModeWithInitVector.invokeNextAsNew();
+        }
+
+        int readBytes;
+        byte[] in = new byte[filePageSizeModified];
+
+        try (OutputStream outputStream = new FileOutputStream(fileName)) {
+            while ((readBytes = input.read(in)) != -1) {
+                if (readBytes != filePageSizeModified) {
+                    // shrink file page array
+                    byte[] tmp = new byte[readBytes];
+                    System.arraycopy(in, 0, tmp, 0, readBytes);
+                    in = tmp;
+                }
+
+                in = padInputByteArray(in);
+
+                byte[] encrypted;
+                if (encryptionMode instanceof ECB || encryptionMode instanceof EncryptionModeCounter) {
+                    encrypted = encryptionMultithreading(in);
+                } else {
+                    encrypted = encryptThreadTask(in, -1);
+                }
+
+                outputStream.write(encrypted);
+            }
+            outputStream.flush();
+        } catch (IOException e) {
+            log.error("I/O exception happened, cause: ", e);
         }
     }
 
@@ -590,8 +627,7 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
 
                         outputStream.write(decrypted);
                         break;
-                    }
-                    else {
+                    } else {
                         // weak spot, every iteration allocating block size for prev =(
                         prev = new byte[algorithmBlockLengthForDecryption];
                         System.arraycopy(toDecrypt, toDecrypt.length - algorithmBlockLengthForDecryption,

@@ -1,7 +1,8 @@
 rootProject.name = 'course-work-chat-app'
-include 'cryptography-starter'
 include 'client-chat-app'
-include 'server-chat-app'
+include 'server'
+include 'cryptography-starter'
 include 'test-client-for-grpc'
 include 'test-client-for-kafka'
+include 'client'
 

@@ -12,8 +12,6 @@ import java.util.Set;
 public class User extends AbstractEntity {
     private String username;
 
-    private String name;
-
     @JsonIgnore
     private String hashedPassword;
 
@@ -29,13 +27,13 @@ public class User extends AbstractEntity {
         this.username = username;
     }
 
-    public String getName() {
-        return name;
-    }
+//    public String getName() {
+//        return name;
+//    }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+//    public void setName(String name) {
+//        this.name = name;
+//    }
 
     public String getHashedPassword() {
         return hashedPassword;

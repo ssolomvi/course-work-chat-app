@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Serializer;
-import ru.mai.model.KafkaMessage;
+import ru.mai.kafka.model.KafkaMessage;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
