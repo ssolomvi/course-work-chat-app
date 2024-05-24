@@ -14,13 +14,13 @@ public class FeistelCipherLOKI97 {
 
     public FeistelCipherLOKI97(RoundKeyGeneration keyGen, EncryptionConversion conversion, byte[] key) {
         if (keyGen == null) {
-            throw new IllegalArgumentExceptionWithLog("Passed param keyGen is null", log);
+            throw new IllegalArgumentExceptionWithLog("FeistelCipherLOKI97: Passed param keyGen is null", log);
         }
         if (conversion == null) {
-            throw new IllegalArgumentExceptionWithLog("Passed param conversion is null", log);
+            throw new IllegalArgumentExceptionWithLog("FeistelCipherLOKI97: Passed param conversion is null", log);
         }
         if (key == null) {
-            throw new IllegalArgumentExceptionWithLog("Passed param key is null", log);
+            throw new IllegalArgumentExceptionWithLog("FeistelCipherLOKI97: Passed param key is null", log);
         }
 
         this.encryptionConversion = conversion;
@@ -48,12 +48,12 @@ public class FeistelCipherLOKI97 {
             int currRoundSubKeysIndex = 3 * i - 1; // for SKi
             byte[] tmp = Operations.xor(
                     left, encryptionConversion.encrypt(
-                            Operations.additionByteArrays(
+                            Operations.additionByteArraysLength8(
                                     right,
                                     roundKeys[currRoundSubKeysIndex - 2]),
                             roundKeys[currRoundSubKeysIndex - 1]));
-            left = Operations.additionByteArrays(
-                    Operations.additionByteArrays(
+            left = Operations.additionByteArraysLength8(
+                    Operations.additionByteArraysLength8(
                             right,
                             roundKeys[currRoundSubKeysIndex - 2]),
                     roundKeys[currRoundSubKeysIndex]);
@@ -83,10 +83,10 @@ public class FeistelCipherLOKI97 {
         for (int i = roundCount; i >= 1; i--) {
             int currRoundSubKeysIndex = 3 * i - 1; // for SKi
             byte[] tmp = Operations.xor(right, encryptionConversion.encrypt(
-                    Operations.subtractionByteArrays(left, roundKeys[currRoundSubKeysIndex]),
+                    Operations.subtractionByteArraysLength8(left, roundKeys[currRoundSubKeysIndex]),
                     roundKeys[currRoundSubKeysIndex - 1]));
-            right = Operations.subtractionByteArrays(
-                    Operations.subtractionByteArrays(
+            right = Operations.subtractionByteArraysLength8(
+                    Operations.subtractionByteArraysLength8(
                             left, roundKeys[currRoundSubKeysIndex]),
                     roundKeys[currRoundSubKeysIndex - 2]);
             left = tmp;

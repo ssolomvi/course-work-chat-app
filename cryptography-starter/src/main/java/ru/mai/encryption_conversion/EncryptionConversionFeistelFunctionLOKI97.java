@@ -129,7 +129,7 @@ public class EncryptionConversionFeistelFunctionLOKI97 implements EncryptionConv
         return result;
     }
 
-    public byte[] P(byte[] input) {
+    private byte[] P(byte[] input) {
         return Operations.longToBytes(
                 P[input[0] & 0xFF] >>> 7 |
                 P[input[1] & 0xFF] >>> 6 |
@@ -141,7 +141,7 @@ public class EncryptionConversionFeistelFunctionLOKI97 implements EncryptionConv
                 P[input[7] & 0xFF]);
     }
 
-    public byte[] Sb(byte[] input, byte[] roundKey) {
+    private byte[] Sb(byte[] input, byte[] roundKey) {
         long inputLong = Operations.bytesArrToLong(input);
         long roundKeyLong = Operations.bytesArrToLong(roundKey);
 

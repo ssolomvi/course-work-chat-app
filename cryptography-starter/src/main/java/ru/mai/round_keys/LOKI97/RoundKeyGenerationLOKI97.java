@@ -26,9 +26,9 @@ public class RoundKeyGenerationLOKI97 implements RoundKeyGeneration {
     private byte[] g(byte[] K1, byte[] K3, byte[] K2, int i) {
         long deltaMultiplyI = DELTA * i;
         return encryptionConversion.encrypt(
-                Operations.additionByteArrays(
+                Operations.additionByteArraysLength8(
                         K1,
-                        Operations.additionByteArrayAndLong(
+                        Operations.additionByteArrayLength8AndLong(
                                 K3,
                                 deltaMultiplyI)),
                 K2);

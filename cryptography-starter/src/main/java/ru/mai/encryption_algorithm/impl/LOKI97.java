@@ -25,9 +25,9 @@ public class LOKI97 implements EncryptionAlgorithm {
         }
 
         EncryptionConversionFeistelFunctionLOKI97 encryptionConversionFeistelFunctionLOKI97 = new EncryptionConversionFeistelFunctionLOKI97();
-        RoundKeyGenerationLOKI97 roundKeyGenerationLOKI97Direct = new RoundKeyGenerationLOKI97(encryptionConversionFeistelFunctionLOKI97);
-        this.cipherEncryption = new FeistelCipherLOKI97(roundKeyGenerationLOKI97Direct, encryptionConversionFeistelFunctionLOKI97, key);
-        this.cipherDecryption = new FeistelCipherLOKI97(roundKeyGenerationLOKI97Direct, encryptionConversionFeistelFunctionLOKI97, key);
+        RoundKeyGenerationLOKI97 roundKeyGenerationLOKI97 = new RoundKeyGenerationLOKI97(encryptionConversionFeistelFunctionLOKI97);
+        this.cipherEncryption = new FeistelCipherLOKI97(roundKeyGenerationLOKI97, encryptionConversionFeistelFunctionLOKI97, key);
+        this.cipherDecryption = new FeistelCipherLOKI97(roundKeyGenerationLOKI97, encryptionConversionFeistelFunctionLOKI97, key);
     }
 
     @Override

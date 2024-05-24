@@ -32,7 +32,7 @@ public class LOKI97Tests {
         byte[] arr2 = {0, 2};
         Operations.printByteArray(arr2);
 
-        byte[] arr3 = Operations.additionByteArrays(arr1, arr2);
+        byte[] arr3 = Operations.additionByteArraysLength8(arr1, arr2);
 
         Operations.printByteArray(arr3);
     }
