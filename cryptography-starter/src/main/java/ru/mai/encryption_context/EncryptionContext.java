@@ -1,6 +1,8 @@
 package ru.mai.encryption_context;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Path;
 
 /**
@@ -14,9 +16,10 @@ public interface EncryptionContext {
 
     // todo: return future instead, so this method will be accessible in multithreading
     void encrypt(Path input, Path output);
-    void encrypt(String fileName, InputStream input);
+    void encrypt(InputStream inputStream, OutputStream outputStream) throws IOException;
 
     byte[] decrypt(byte[] input);
 
     void decrypt(Path input, Path output);
+    void decrypt(InputStream inputStream, OutputStream outputStream, long fileSize) throws IOException;
 }

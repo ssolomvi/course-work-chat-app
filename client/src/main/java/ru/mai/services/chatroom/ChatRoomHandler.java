@@ -157,10 +157,14 @@ public class ChatRoomHandler {
                 .build();
 
         var response = blockingStub.deleteRoom(chatRoomLogins);
-        contextsRepository.remove(companion);
-        // todo: remove from db companion_login, encryption_mode, padding_mode, algorithm, init; remove from db all messages with companion_login
+        deleteRoom(companion);
 
         return response.getStatus();
+    }
+
+    private void deleteRoom(String companion) {
+        contextsRepository.remove(companion);
+        // todo: remove from db companion_login, encryption_mode, padding_mode, algorithm, init; remove from db all messages with companion_login
     }
 
     public Map<String, Boolean> checkForDeleteRoomRequests(Login login) {
@@ -181,6 +185,7 @@ public class ChatRoomHandler {
                     continue;
                 }
                 deleted.put(request.getCompanionLogin(), request.getStatus());
+                deleteRoom(request.getCompanionLogin());;
             }
 
             return deleted;

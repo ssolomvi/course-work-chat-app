@@ -331,6 +331,31 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
         return encryptThreadTask(toEncrypt, -1);
     }
 
+    public void encrypt(InputStream inputStream, OutputStream outputStream) throws IOException {
+        byte[] toEncrypt = new byte[filePageSizeModified];
+        int bytesRead;
+
+        while ((bytesRead = inputStream.read(toEncrypt)) != -1) {
+            if (bytesRead != filePageSizeModified) {
+                // shrink file page array
+                byte[] tmp = new byte[bytesRead];
+                System.arraycopy(toEncrypt, 0, tmp, 0, bytesRead);
+                toEncrypt = tmp;
+            }
+
+            toEncrypt = padInputByteArray(toEncrypt);
+
+            byte[] encrypted;
+            if (encryptionMode instanceof ECB || encryptionMode instanceof EncryptionModeCounter) {
+                encrypted = encryptionMultithreading(toEncrypt);
+            } else {
+                encrypted = encryptThreadTask(toEncrypt, -1);
+            }
+
+            outputStream.write(encrypted);
+        }
+    }
+
     /**
      * Encrypts {@code input} accordingly to algorithm, padding mode and encryption mode used in object's constructor
      *
@@ -351,28 +376,7 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
 
         try (FileInputStream inputStream = new FileInputStream(input.toFile())) {
             try (FileOutputStream outputStream = new FileOutputStream(output.toFile())) {
-                byte[] toEncrypt = new byte[filePageSizeModified];
-                int bytesRead;
-
-                while ((bytesRead = inputStream.read(toEncrypt)) != -1) {
-                    if (bytesRead != filePageSizeModified) {
-                        // shrink file page array
-                        byte[] tmp = new byte[bytesRead];
-                        System.arraycopy(toEncrypt, 0, tmp, 0, bytesRead);
-                        toEncrypt = tmp;
-                    }
-
-                    toEncrypt = padInputByteArray(toEncrypt);
-
-                    byte[] encrypted;
-                    if (encryptionMode instanceof ECB || encryptionMode instanceof EncryptionModeCounter) {
-                        encrypted = encryptionMultithreading(toEncrypt);
-                    } else {
-                        encrypted = encryptThreadTask(toEncrypt, -1);
-                    }
-
-                    outputStream.write(encrypted);
-                }
+                encrypt(inputStream, outputStream);
             }
         } catch (FileNotFoundException e) {
             log.error("Carrramba! File cannot be opened for reading.");
@@ -383,40 +387,6 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
         }
     }
 
-    @Override
-    public void encrypt(String fileName, InputStream input) {
-        if (encryptionMode instanceof EncryptionModeWithInitVector encryptionModeWithInitVector) {
-            encryptionModeWithInitVector.invokeNextAsNew();
-        }
-
-        int readBytes;
-        byte[] in = new byte[filePageSizeModified];
-
-        try (OutputStream outputStream = new FileOutputStream(fileName)) {
-            while ((readBytes = input.read(in)) != -1) {
-                if (readBytes != filePageSizeModified) {
-                    // shrink file page array
-                    byte[] tmp = new byte[readBytes];
-                    System.arraycopy(in, 0, tmp, 0, readBytes);
-                    in = tmp;
-                }
-
-                in = padInputByteArray(in);
-
-                byte[] encrypted;
-                if (encryptionMode instanceof ECB || encryptionMode instanceof EncryptionModeCounter) {
-                    encrypted = encryptionMultithreading(in);
-                } else {
-                    encrypted = encryptThreadTask(in, -1);
-                }
-
-                outputStream.write(encrypted);
-            }
-            outputStream.flush();
-        } catch (IOException e) {
-            log.error("I/O exception happened, cause: ", e);
-        }
-    }
 
     // endregion
 
@@ -582,12 +552,60 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
     }
 
     @Override
+    public void decrypt(InputStream inputStream, OutputStream outputStream, long fileSize) throws IOException {
+        byte[] prev = null;
+        byte[] toDecrypt = new byte[filePageSizeModified];
+
+        int bytesRead;
+
+        long offset = 0;
+
+        while ((bytesRead = inputStream.read(toDecrypt)) != -1) {
+            offset += bytesRead;
+
+            if (bytesRead != filePageSizeModified) {
+                // shrink block if needed
+                byte[] tmp = new byte[bytesRead];
+                System.arraycopy(toDecrypt, 0, tmp, 0, bytesRead);
+                toDecrypt = tmp;
+            }
+
+            // decrypt
+            byte[] decrypted;
+            if (encryptionMode instanceof ECB
+                    || encryptionMode instanceof EncryptionModeCounter
+                    || encryptionMode instanceof EncryptionModePreviousNeeded) {
+                decrypted = decryptionMultithreading(toDecrypt, prev);
+            } else {
+                decrypted = decryptThreadTask(toDecrypt, -1, null);
+            }
+
+            // check if it is the last block and de-padding needed
+            if (bytesRead != filePageSizeModified || offset == fileSize) {
+                // de-padding needed
+                decrypted = erasePad(decrypted);
+
+                outputStream.write(decrypted);
+                break;
+            } else {
+                // weak spot, every iteration allocating block size for prev =(
+                prev = new byte[algorithmBlockLengthForDecryption];
+                System.arraycopy(toDecrypt, toDecrypt.length - algorithmBlockLengthForDecryption,
+                        prev, 0,
+                        algorithmBlockLengthForDecryption);
+
+                // write next byte
+                outputStream.write(decrypted);
+            }
+        }
+
+    }
+
+    @Override
     public void decrypt(Path input, Path output) {
         if (encryptionMode instanceof EncryptionModeWithInitVector encryptionModeWithInitVector) {
             encryptionModeWithInitVector.invokeNextAsNew();
         }
-
-        int filePageSizeModified = FILE_PAGE_SIZE / algorithmBlockLengthForDecryption * algorithmBlockLengthForDecryption;
 
         byte[] prev = null;
 

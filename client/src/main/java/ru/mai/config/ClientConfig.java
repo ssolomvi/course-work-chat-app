@@ -18,11 +18,6 @@ public class ClientConfig {
     }
 
     @Bean
-    public ChatServiceGrpc.ChatServiceStub asyncStub(@Autowired Channel channel) {
-        return ChatServiceGrpc.newStub(channel);
-    }
-
-    @Bean
     public ChatServiceGrpc.ChatServiceBlockingStub blockingStub(@Autowired Channel channel) {
         return ChatServiceGrpc.newBlockingStub(channel);
     }

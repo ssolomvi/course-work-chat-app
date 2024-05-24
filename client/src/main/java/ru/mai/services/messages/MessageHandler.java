@@ -5,13 +5,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ru.mai.ChatServiceGrpc;
+import ru.mai.Login;
 import ru.mai.MessageToCompanion;
 import ru.mai.model.KafkaMessage;
 import ru.mai.services.ContextsRepository;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.UUID;
+import java.util.*;
 
 @Slf4j
 @Component
@@ -50,8 +51,8 @@ public class MessageHandler {
             KafkaMessage message = new KafkaMessage(UUID.randomUUID(), own, "", 1, 0, encrypted);
             MessageToCompanion data = MessageToCompanion.newBuilder()
                     .setCompanionLogin(companion)
-                            .setKafkaMessage(message.toString())
-                                    .build();
+                    .setKafkaMessage(message.toString())
+                    .build();
 
             try {
                 blockingStub.sendMessage(data);
@@ -69,8 +70,35 @@ public class MessageHandler {
         byte[] arr = new byte[FILE_PAGE_SIZE];
         try {
             inputStream.read(arr);
+            // todo:
+            // encrypt file -> encrypted file
+            // pass file with sendMessage
+            // delete encrypted file
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public Map<String, KafkaMessage> anyMessages(Login login) {
+        Iterator<MessageToCompanion> messages;
+        try {
+            messages = blockingStub.anyMessages(login);
+        } catch (StatusRuntimeException e) {
+            log.error("{}: passDiffieHellmanNumber: Error happened, cause: ", login.getLogin(), e);
+            return Collections.emptyMap();
+        }
+
+        if (!messages.hasNext()) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, KafkaMessage> messagesMap = new HashMap<>();
+
+        while (messages.hasNext()) {
+            var message = messages.next();
+            // todo: deserilize
+//            messagesMap.put(message.getCompanionLogin(), message.getKafkaMessage());
+        }
+        return messagesMap;
     }
 }

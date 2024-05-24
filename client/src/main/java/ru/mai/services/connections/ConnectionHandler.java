@@ -1,4 +1,4 @@
-package ru.mai.services;
+package ru.mai.services.connections;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
