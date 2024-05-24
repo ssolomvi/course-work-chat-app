@@ -148,6 +148,10 @@ public class Operations {
         //Performs bitwise circular shift of 'arr' by 'nShift' bits to the left
         //RETURN:
         //      = Result
+        if (n < 0) {
+            return cyclicShiftRight(input, -n);
+        }
+
         byte[] res = new byte[input.length];
 
         if (input.length > 0) {
@@ -180,6 +184,10 @@ public class Operations {
         //Performs bitwise circular shift of 'arr' by 'nShift' bits to the left
         //RETURN:
         //      = Result
+        if (n < 0) {
+            return cyclicShiftLeft(input, -n);
+        }
+
         byte[] res = new byte[input.length];
 
         if (input.length > 0) {
@@ -326,6 +334,23 @@ public class Operations {
         return true;
     }
 
+    private static byte[] modifyArrayAfterOperation(byte[] resultByteArray, int arrLength) {
+        // 1) если длина оказалась меньше нужной, добиваем слева ноликами
+        // 2) если длина оказалась больше нужной, срезаем лишние байты слева
+        byte[] toResult = new byte[arrLength];
+        int resultByteArrayLength = resultByteArray.length;
+        int diffLengths = resultByteArrayLength - arrLength;
+        if (diffLengths < 0) {
+            System.arraycopy(resultByteArray, 0, toResult, -diffLengths, resultByteArrayLength);
+        } else if (diffLengths > 0) {
+            System.arraycopy(resultByteArray, diffLengths, toResult, 0, arrLength);
+        } else {
+            toResult = resultByteArray;
+        }
+
+        return toResult;
+    }
+
     // region methods for LOKI97
     public static byte[] longToBytes(long l) {
         byte[] result = new byte[8];
@@ -353,9 +378,9 @@ public class Operations {
                 ((arr[7] & 0xFFL));
     }
 
-    public static byte[] additionByteArrays(byte[] arr1, byte[] arr2) {
+    public static byte[] additionByteArraysLength8(byte[] arr1, byte[] arr2) {
         if (!(arr1.length == 8 && arr2.length == 8)) {
-            throw new IllegalArgumentExceptionWithLog("additionByteArrays: Params arr1 and arr2 " +
+            throw new IllegalArgumentExceptionWithLog("additionByteArraysLength8: Params arr1 and arr2 " +
                     "must be the length 8", log);
         }
 
@@ -365,27 +390,13 @@ public class Operations {
         long number2 = bytesArrToLong(arr2);
 
         long resultLong = number1 + number2;
-        byte[] resultByteArray = longToBytes(resultLong);
 
-        // 1) если длина оказалась меньше нужной, добиваем слева ноликами
-        // 2) если длина оказалась больше нужной, срезаем лишние байты слева
-        byte[] toResult = new byte[arrLength];
-        int resultByteArrayLength = resultByteArray.length;
-        int diffLengths = resultByteArrayLength - arrLength;
-        if (diffLengths < 0) {
-            System.arraycopy(resultByteArray, 0, toResult, -diffLengths, resultByteArrayLength);
-        } else if (diffLengths > 0) {
-            System.arraycopy(resultByteArray, diffLengths, toResult, 0, arrLength);
-        } else {
-            toResult = resultByteArray;
-        }
-
-        return toResult;
+        return modifyArrayAfterOperation(longToBytes(resultLong), arrLength);
     }
 
-    public static byte[] subtractionByteArrays(byte[] arr1, byte[] arr2) {
+    public static byte[] subtractionByteArraysLength8(byte[] arr1, byte[] arr2) {
         if (!(arr1.length == 8 && arr2.length == 8)) {
-            throw new IllegalArgumentExceptionWithLog("subtractionByteArrays: Params arr1 and arr2 " +
+            throw new IllegalArgumentExceptionWithLog("subtractionByteArraysLength8: Params arr1 and arr2 " +
                     "must be the length 8", log);
         }
 
@@ -395,50 +406,22 @@ public class Operations {
         long number2 = bytesArrToLong(arr2);
 
         long resultLong = number1 - number2;
-        byte[] resultByteArray = longToBytes(resultLong);
 
-        // 1) если длина оказалась меньше нужной, добиваем слева ноликами
-        // 2) если длина оказалась больше нужной, срезаем лишние байты слева
-        byte[] toResult = new byte[arrLength];
-        int resultByteArrayLength = resultByteArray.length;
-        int diffLengths = resultByteArrayLength - arrLength;
-        if (diffLengths < 0) {
-            System.arraycopy(resultByteArray, 0, toResult, -diffLengths, resultByteArrayLength);
-        } else if (diffLengths > 0) {
-            System.arraycopy(resultByteArray, diffLengths, toResult, 0, arrLength);
-        } else {
-            toResult = resultByteArray;
-        }
-
-        return toResult;
+        return modifyArrayAfterOperation(longToBytes(resultLong), arrLength);
     }
 
-    public static byte[] additionByteArrayAndLong(byte[] arr, long number2) {
+    public static byte[] additionByteArrayLength8AndLong(byte[] arr, long number2) {
         int arrLength = arr.length;
         if (arrLength != 8) {
-            throw new IllegalArgumentExceptionWithLog("additionByteArrayAndLong: Param arr " +
+            throw new IllegalArgumentExceptionWithLog("additionByteArrayLength8AndLong: Param arr " +
                     "must be the length 8", log);
         }
 
         long number1 = bytesArrToLong(arr);
 
         long resultLong = number1 + number2;
-        byte[] resultByteArray = longToBytes(resultLong);
 
-        // 1) если длина оказалась меньше нужной, добиваем слева ноликами
-        // 2) если длина оказалась больше нужной, срезаем лишние байты слева
-        byte[] toResult = new byte[arrLength];
-        int resultByteArrayLength = resultByteArray.length;
-        int diffLengths = resultByteArrayLength - arrLength;
-        if (diffLengths < 0) {
-            System.arraycopy(resultByteArray, 0, toResult, -diffLengths, resultByteArrayLength);
-        } else if (diffLengths > 0) {
-            System.arraycopy(resultByteArray, diffLengths, toResult, 0, arrLength);
-        } else {
-            toResult = resultByteArray;
-        }
-
-        return toResult;
+        return modifyArrayAfterOperation(longToBytes(resultLong), arrLength);
     }
 
     public static byte[] additionByteArrayAndBigInteger(byte[] arr, BigInteger number) {
@@ -452,22 +435,129 @@ public class Operations {
 
         BigInteger resultBigInteger = numberArr.add(number);
         resultBigInteger = resultBigInteger.remainder(powTwo64);
-        byte[] resultByteArray = resultBigInteger.toByteArray();
 
-        // 1) если длина оказалась меньше нужной, добиваем слева ноликами
-        // 2) если длина оказалась больше нужной, срезаем лишние байты слева
-        byte[] toResult = new byte[arrLength];
-        int resultByteArrayLength = resultByteArray.length;
-        int diffLengths = resultByteArrayLength - arrLength;
-        if (diffLengths < 0) {
-            System.arraycopy(resultByteArray, 0, toResult, -diffLengths, resultByteArrayLength);
-        } else if (diffLengths > 0) {
-            System.arraycopy(resultByteArray, diffLengths, toResult, 0, arrLength);
-        } else {
-            toResult = resultByteArray;
+        return  modifyArrayAfterOperation(resultBigInteger.toByteArray(), arrLength);
+    }
+
+    // endregion
+
+    // region methods for RC6
+    public static byte[] intToBytes(int i) {
+        byte[] result = new byte[4];
+        for (int j = 3; j >= 0; j--) {
+            result[j] = (byte)(i & 0xFF);
+            i >>= 8;
         }
 
-        return toResult;
+        return result;
+    }
+
+    public static int bytesArrToInt(byte[] arr) {
+        if (arr.length != 4) {
+            throw new IllegalArgumentExceptionWithLog("bytesArrToInt: Param arr " +
+                    "must be the length 4", log);
+        }
+
+        return ((arr[0] & 0xFF) << 24) |
+                ((arr[1] & 0xFF) << 16) |
+                ((arr[2] & 0xFF) <<  8) |
+                ((arr[3] & 0xFF));
+    }
+
+    public static byte[] additionByteArraysLength4(byte[] arr1, byte[] arr2) {
+        if (!(arr1.length == 4 && arr2.length == 4)) {
+            throw new IllegalArgumentExceptionWithLog("additionByteArraysLength4: Params arr1 and arr2 " +
+                    "must be the length 4", log);
+        }
+
+        int arrLength = arr1.length;
+
+        int number1 = bytesArrToInt(arr1);
+        int number2 = bytesArrToInt(arr2);
+
+        int resultInt = number1 + number2;
+
+        return modifyArrayAfterOperation(intToBytes(resultInt), arrLength);
+    }
+
+    public static byte[] subtractionByteArraysLength4(byte[] arr1, byte[] arr2) {
+        if (!(arr1.length == 4 && arr2.length == 4)) {
+            throw new IllegalArgumentExceptionWithLog("subtractionByteArraysLength4: Params arr1 and arr2 " +
+                    "must be the length 4", log);
+        }
+
+        int arrLength = arr1.length;
+
+        long number1 = bytesArrToInt(arr1) & 0xffffffffL;
+        long number2 = bytesArrToInt(arr2) & 0xffffffffL;
+
+        long resultLong = number1 - number2;
+
+        return modifyArrayAfterOperation(longToBytes(resultLong), arrLength);
+    }
+
+    public static byte[] additionByteArrayLength4AndInt(byte[] arr, int number2) {
+        int arrLength = arr.length;
+        if (arrLength != 4) {
+            throw new IllegalArgumentExceptionWithLog("additionByteArrayLength8AndInt: Param arr " +
+                    "must be the length 4", log);
+        }
+
+        long number1 = bytesArrToInt(arr) & 0xffffffffL;
+
+        long resultLong = number1 + (number2 & 0xffffffffL);
+
+        return modifyArrayAfterOperation(longToBytes(resultLong), arrLength);
+    }
+
+    public static byte[] multiplyingByteArrayLength4(byte[] arr1, byte[] arr2) {
+        if (!(arr1.length == 4 && arr2.length == 4)) {
+            throw new IllegalArgumentExceptionWithLog("multiplyingByteArrayLength4: Params arr1 and arr2 " +
+                    "must be the length 4", log);
+        }
+        int arrLength = arr1.length;
+
+        long number1 = bytesArrToInt(arr1) & 0xffffffffL;
+        long number2 = bytesArrToInt(arr2)& 0xffffffffL;
+
+        long resultLong = number1 * number2;
+        resultLong %= 4294967296L;
+
+        return modifyArrayAfterOperation(longToBytes(resultLong), arrLength);
+    }
+
+    public static byte[] multiplyingByteArrayLength4AndInt(byte[] arr, int number2) {
+        int arrLength = arr.length;
+        if (arrLength != 4) {
+            throw new IllegalArgumentExceptionWithLog("multiplyingByteArrayLength4AndInt: Param arr " +
+                    "must be the length 4", log);
+        }
+
+        int number1 = bytesArrToInt(arr);
+
+        int resultInt = number1 * number2;
+
+        return modifyArrayAfterOperation(intToBytes(resultInt), arrLength);
+    }
+
+    public static int cyclicShiftRightInt(int val, int pas) {
+        return (val >>> pas) | (val << (32-pas));
+    }
+    public static int cyclicShiftLeftInt(int val, int pas) {
+        return (val << pas) | (val >>> (32 - pas));
+    }
+
+    public static byte[] reverseByteArray(byte[] arr) {
+        byte[] result = arr.clone();
+
+        for (int i = 0; i < arr.length / 2; i++)
+        {
+            byte temp = result[i];
+            result[i] = result[arr.length - i - 1];
+            result[arr.length - i - 1] = temp;
+        }
+
+        return result;
     }
 
     // endregion

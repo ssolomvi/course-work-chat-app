@@ -23,19 +23,19 @@ public class LOKI97Tests {
 //        printByteArray(permArr);
     }
 
-//    @Test
-//    public void additionBytesArraysTest() {
-//
-//        byte[] arr1 = {-1, -1};
-//        Operations.printByteArray(arr1);
-//
-//        byte[] arr2 = {0, 2};
-//        Operations.printByteArray(arr2);
-//
-//        byte[] arr3 = Operations.additionByteArrays(arr1, arr2);
-//
-//        Operations.printByteArray(arr3);
-//    }
+    @Test
+    public void additionBytesArraysTest() {
+
+        byte[] arr1 = {-1, -1};
+        Operations.printByteArray(arr1);
+
+        byte[] arr2 = {0, 2};
+        Operations.printByteArray(arr2);
+
+        byte[] arr3 = Operations.additionByteArraysLength8(arr1, arr2);
+
+        Operations.printByteArray(arr3);
+    }
 
     @Test
     public void LOKI97Test() {
