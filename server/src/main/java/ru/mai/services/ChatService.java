@@ -52,6 +52,11 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
     @Override
     public void disconnect(Login request, StreamObserver<Status> responseObserver) {
+        if (!usersRep.contains(request.getLogin())) {
+            log.debug("User {} is already offline / never been created", request.getLogin());
+            responseObserver.onNext(Status.newBuilder().setEnumStatus(EnumStatus.ENUM_STATUS_ERROR).build());
+            responseObserver.onCompleted();
+        }
         log.debug("{}: disconnected", request.getLogin());
         usersRep.deleteUser(request.getLogin());
         responseObserver.onNext(Status.newBuilder().setEnumStatus(EnumStatus.ENUM_STATUS_OK).build());
@@ -105,7 +110,11 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
         InitRoomResponse response = InitRoomResponseBuilder.build(companionLogin, request.getAlgorithm(), request.getEncryptionMode(), request.getPaddingMode());
 
-        addRequestsRep.putRequest(ownLogin, companionLogin, InitRoomResponseBuilder.buildForCompanion(ownLogin, response));
+        if (!addRequestsRep.putRequest(ownLogin, companionLogin, InitRoomResponseBuilder.buildForCompanion(ownLogin, response))) {
+            responseObserver.onNext(InitRoomResponse.getDefaultInstance());
+            responseObserver.onCompleted();
+            return;
+        }
 
         log.debug("{} -> {}: initiated room creation", ownLogin, companionLogin);
 
@@ -215,11 +224,12 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
     @Override
     public void sendMessage(MessageToCompanion request, StreamObserver<Status> responseObserver) {
         if (usersRep.isActive(request.getCompanionLogin())) {
-            messageHandler.sendMessage(request.getCompanionLogin(), new MessageDto(UUID.fromString(request.getUuid()),
-                    request.getSender(), request.getFilename(),
-                    request.getPartitions(), request.getCurrIndex(),
-                    request.getValue().toByteArray()));
-            log.debug("-> {}: sent message", request.getCompanionLogin());
+            log.debug("Sending message {} to {}", request.getValue(), request.getCompanionLogin());
+            messageHandler.sendMessage(request.getCompanionLogin(),
+                    new MessageDto(UUID.fromString(request.getUuid()),
+                            request.getSender(), request.getFilename(),
+                            request.getPartitions(), request.getCurrIndex(),
+                            request.getValue().toByteArray()));
         }
         responseObserver.onNext(Status.newBuilder().setEnumStatus(EnumStatus.ENUM_STATUS_OK).build());
         responseObserver.onCompleted();
@@ -239,7 +249,7 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
         for (var consumerRecord : consumerRecords) {
             String sender = consumerRecord.value().getSender();
-            log.debug("{} <- {}: got message", request.getLogin(), sender);
+            log.debug("{} <- {}: got message: {}", request.getLogin(), sender, consumerRecord.value().getValue());
 
             MessageDto dto = consumerRecord.value();
 

@@ -25,7 +25,9 @@ public class KafkaMessageHandler {
     KafkaProducer<String, MessageDto> producer = KafkaManager.createKafkaProducer();
 
     public void sendMessage(String companion, MessageDto message) {
+        log.debug("-> {}: sending message {}", companion, message);
         producer.send(new ProducerRecord<>(KafkaManager.getTopicName(companion), message));
+        log.debug("-> {}: sent message {}", companion, message);
     }
 
     public Optional<ConsumerRecords<String, MessageDto>> readMessages(String user) {

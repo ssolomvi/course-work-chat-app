@@ -48,7 +48,6 @@ public class ActiveUsersAndConsumersRepository {
         KafkaManager.createTopic(topicName);
 
         usersAndConsumers.put(user, KafkaManager.createKafkaConsumer(topicName));
-        log.debug("{} is online", user);
     }
 
     public void deleteUser(String user) {
@@ -62,6 +61,10 @@ public class ActiveUsersAndConsumersRepository {
         KafkaManager.deleteTopic(topicName);
 
         usersAndConsumers.remove(user);
+    }
+
+    public boolean contains(String user) {
+        return usersAndConsumers.containsKey(user);
     }
 
 }

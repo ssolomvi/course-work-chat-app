@@ -28,7 +28,6 @@ public class AddRoomRequestsRepository {
 
     public boolean checkIfCompanionRequested(String login, String companionLogin) {
         if (initRoomRequests == null) {
-            log.debug("Repository is not initialized");
             return false;
         }
 
@@ -36,21 +35,24 @@ public class AddRoomRequestsRepository {
             return initRoomRequests.get(login).containsKey(companionLogin);
         }
 
-        log.debug("{} has no requests", login);
+        log.debug("{} has no requests from {}", login, companionLogin);
         return false;
     }
 
-    public void putRequest(String login, String companionLogin, InitRoomResponse response) {
+    public boolean putRequest(String login, String companionLogin, InitRoomResponse response) {
         if (initRoomRequests == null) {
             initRoomRequests = new ConcurrentHashMap<>();
         }
 
         if (!initRoomRequests.containsKey(companionLogin)) {
             initRoomRequests.put(companionLogin, new ConcurrentHashMap<>());
-        }
 
-        log.debug("Putting add room request from {} to {}", login, companionLogin);
-        initRoomRequests.get(companionLogin).put(login, response);
+            log.debug("Putting add room request from {} to {}", login, companionLogin);
+            initRoomRequests.get(companionLogin).put(login, response);
+            return true;
+        }
+            log.debug("{} already has init room request from {}", companionLogin, login);
+        return false;
     }
 
 }
