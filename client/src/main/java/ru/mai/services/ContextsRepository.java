@@ -11,6 +11,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ContextsRepository {
     private final Map<String, EncryptionContext> contexts = new ConcurrentHashMap<>();
 
+    public void put(Map<String, EncryptionContext> toPut) {
+        contexts.putAll(toPut);
+    }
+
     public void put(String companion, EncryptionContext context) {
         contexts.put(companion, context);
     }

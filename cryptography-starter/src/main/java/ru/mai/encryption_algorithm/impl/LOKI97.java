@@ -10,13 +10,13 @@ import ru.mai.round_keys.LOKI97.RoundKeyGenerationLOKI97;
 
 public class LOKI97 implements EncryptionAlgorithm {
     private static final Logger log = LoggerFactory.getLogger(LOKI97.class);
-    private final int lenBlock = 16; // in bytes
     private final int roundCount = 16;
     private final FeistelCipherLOKI97 cipherEncryption;
     private final FeistelCipherLOKI97 cipherDecryption;
     public static final int KEY_LENGTH_LOKI97_16 = 16;
     public static final int KEY_LENGTH_LOKI97_24 = 24;
     public static final int KEY_LENGTH_LOKI97_32 = 32;
+    public static final int BLOCK_LENGTH_LOKI97 = 16;
 
     public LOKI97(byte[] key) {
         int lenKey = key.length;
@@ -42,11 +42,11 @@ public class LOKI97 implements EncryptionAlgorithm {
 
     @Override
     public int getAlgorithmBlockForEncryption() {
-        return lenBlock;
+        return BLOCK_LENGTH_LOKI97;
     }
 
     @Override
     public int getAlgorithmBlockForDecryption() {
-        return lenBlock;
+        return BLOCK_LENGTH_LOKI97;
     }
 }

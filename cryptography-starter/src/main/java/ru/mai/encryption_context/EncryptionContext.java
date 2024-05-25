@@ -17,9 +17,10 @@ public interface EncryptionContext {
     // todo: return future instead, so this method will be accessible in multithreading
     void encrypt(Path input, Path output);
     void encrypt(InputStream inputStream, OutputStream outputStream) throws IOException;
+    byte[] encryptPart(byte[] toEncrypt, boolean initAsNew) throws IOException;
 
     byte[] decrypt(byte[] input);
 
     void decrypt(Path input, Path output);
-    void decrypt(InputStream inputStream, OutputStream outputStream, long fileSize) throws IOException;
+    void decrypt(InputStream inputStream, OutputStream outputStream) throws IOException;
 }

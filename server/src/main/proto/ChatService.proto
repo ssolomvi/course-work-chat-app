@@ -8,29 +8,62 @@ package ru.mai;
 service ChatService {
     /*  -------------------------------- HELLO -------------------------------- */
     rpc Connect (Login) returns (ConnectResponse);
-    rpc Disconnect (Login) returns (Empty);
+    rpc Disconnect (Login) returns (Status);
 
-    rpc CheckCompanionStatus (ChatRoomLogins) returns (CompanionStatus);
+    rpc CheckCompanionStatus (ChatRoomLogins) returns (CompanionAndStatus);
 
     /*  -------------------------------- INIT / DELETE CHAT ROOM -------------------------------- */
     rpc InitRoom (InitRoomRequest) returns (InitRoomResponse);
     rpc CheckForInitRoomRequest (Login) returns (stream InitRoomResponse);
 
-    rpc PassDiffieHellmanNumber (DiffieHellmanNumber) returns (Empty);
+    rpc PassDiffieHellmanNumber (DiffieHellmanNumber) returns (Status);
     rpc AnyDiffieHellmanNumber (Login) returns (stream DiffieHellmanNumber);
 
-    rpc DeleteRoom (ChatRoomLogins) returns (CompanionStatus);
-    rpc CheckForDeletedRoom (Login) returns (stream CompanionStatus);
+    rpc DeleteRoom (ChatRoomLogins) returns (CompanionAndStatus);
+    rpc CheckForDeletedRoom (Login) returns (stream CompanionAndStatus);
 
     /*  -------------------------------- SENDING MESSAGES -------------------------------- */
-    rpc SendMessage (MessageToCompanion) returns (Empty);
+    rpc SendMessage (MessageToCompanion) returns (Status);
 
     rpc AnyMessages (Login) returns (stream MessageToCompanion);
 }
 
 /*  -------------------------------- MESSAGES -------------------------------- */
 
-message Empty {}
+message Status {
+    EnumStatus enum_status = 1;
+}
+
+enum EnumStatus {
+    ENUM_STATUS_OK = 0;
+    ENUM_STATUS_ERROR = 1;
+}
+
+enum Algorithm {
+    ALGORITHM_DES = 0;
+    ALGORITHM_DEAL = 1;
+    ALGORITHM_RIJNDAEL = 2;
+    ALGORITHM_LOKI97 = 3;
+    ALGORITHM_MARS = 4;
+    ALGORITHM_RC6 = 5;
+}
+
+enum EncryptionMode {
+    ENCRYPTION_MODE_ECB = 0;
+    ENCRYPTION_MODE_CBC = 1;
+    ENCRYPTION_MODE_PCBC = 2;
+    ENCRYPTION_MODE_CFB = 3;
+    ENCRYPTION_MODE_OFB = 4;
+    ENCRYPTION_MODE_CTR = 5;
+    ENCRYPTION_MODE_RANDOM_DELTA = 6;
+}
+
+enum PaddingMode {
+    PADDING_MODE_ZEROES = 0;
+    PADDING_MODE_ANSI_X_923 = 1;
+    PADDING_MODE_PKCS7 = 2;
+    PADDING_MODE_ISO10126 = 3;
+}
 
 message Login {
     string login = 1;
@@ -40,7 +73,7 @@ message ConnectResponse {
     string diffie_hellman_g = 1;
 }
 
-message CompanionStatus {
+message CompanionAndStatus {
     string companion_login = 1;
     bool status = 2;
 }
@@ -48,14 +81,16 @@ message CompanionStatus {
 message InitRoomRequest {
     string own_login = 1;
     string companion_login = 2;
-    string algorithm = 3;
+    Algorithm algorithm = 3;
+    EncryptionMode encryption_mode = 4;
+    PaddingMode padding_mode = 5;
 }
 
 message InitRoomResponse {
     string companion_login = 1;
-    string algorithm = 2;
-    string encryption_mode = 3;
-    string padding_mode = 4;
+    Algorithm algorithm = 2;
+    EncryptionMode encryption_mode = 3;
+    PaddingMode padding_mode = 4;
     string init_vector = 5;
     string diffie_hellman_p = 6;
 }
@@ -73,5 +108,10 @@ message ChatRoomLogins {
 
 message MessageToCompanion {
     string companion_login = 1;
-    string kafka_message = 2;
+    string uuid = 2;
+    string sender = 3;
+    string filename = 4;
+    int32 partitions = 5;
+    int32 curr_index = 6;
+    bytes value = 7;
 }

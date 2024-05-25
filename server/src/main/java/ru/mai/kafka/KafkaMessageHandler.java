@@ -6,6 +6,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import ru.mai.kafka.model.MessageDto;
 import ru.mai.repositories.ActiveUsersAndConsumersRepository;
 
 import java.time.Duration;
@@ -21,13 +22,13 @@ public class KafkaMessageHandler {
         this.repository = repository;
     }
 
-    KafkaProducer<String, String> producer = KafkaManager.createKafkaProducer();
+    KafkaProducer<String, MessageDto> producer = KafkaManager.createKafkaProducer();
 
-    public void sendMessage(String companion, String message) {
+    public void sendMessage(String companion, MessageDto message) {
         producer.send(new ProducerRecord<>(KafkaManager.getTopicName(companion), message));
     }
 
-    public Optional<ConsumerRecords<String, String>> readMessages(String user) {
+    public Optional<ConsumerRecords<String, MessageDto>> readMessages(String user) {
         var op = repository.getConsumer(user);
         if (op.isEmpty()) {
             log.debug("No consumer for user {}", user);

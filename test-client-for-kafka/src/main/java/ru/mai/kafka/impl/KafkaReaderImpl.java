@@ -32,7 +32,7 @@ public class KafkaReaderImpl implements KafkaReader {
 
     // (Integer) -- max index?
     private final HashMap<UUID, Pair<String, Integer>> files = new HashMap<>();
-    private static final Integer FILE_PAGE_SIZE = 4092;
+    private static final Integer FILE_PAGE_SIZE = 65536;
 
 
     public KafkaReaderImpl(Map<String, Object> kafkaConsumerConfigs,

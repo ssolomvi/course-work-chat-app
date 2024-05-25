@@ -1,23 +1,24 @@
 package ru.mai.services.messages;
 
+import com.google.protobuf.ByteString;
 import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import ru.mai.ChatServiceGrpc;
-import ru.mai.Login;
-import ru.mai.MessageToCompanion;
-import ru.mai.model.KafkaMessage;
+import ru.mai.*;
+import ru.mai.model.MessageDto;
 import ru.mai.services.ContextsRepository;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 @Slf4j
 @Component
 public class MessageHandler {
-    public static final Integer FILE_PAGE_SIZE = 4092;
+    public static final Integer FILE_PAGE_SIZE = 65536;
     private static final Integer FILE_PAGE_SIZE_FOR_ENCRYPTED = (int) (FILE_PAGE_SIZE * 0.1 + FILE_PAGE_SIZE);
     private final ChatServiceGrpc.ChatServiceBlockingStub blockingStub;
     private final ContextsRepository contextsRepository;
@@ -48,15 +49,23 @@ public class MessageHandler {
         byte[] encrypted = context.encrypt(arr);
 
         if (encrypted.length <= FILE_PAGE_SIZE_FOR_ENCRYPTED) {
-            KafkaMessage message = new KafkaMessage(UUID.randomUUID(), own, "", 1, 0, encrypted);
             MessageToCompanion data = MessageToCompanion.newBuilder()
                     .setCompanionLogin(companion)
-                    .setKafkaMessage(message.toString())
+                    .setUuid(UUID.randomUUID().toString())
+                    .setSender(own)
+                    .setFilename("")
+                    .setPartitions(1)
+                    .setCurrIndex(0)
+                    .setValue(ByteString.copyFrom(encrypted))
                     .build();
 
             try {
-                blockingStub.sendMessage(data);
-                log.debug("Sent byte array to {}", companion);
+                Status sendStatus = blockingStub.sendMessage(data);
+                if (sendStatus.getEnumStatus().equals(EnumStatus.ENUM_STATUS_OK)) {
+                    log.debug("Sent byte array to {}", companion);
+                } else {
+                    log.warn("Error sending simple text message to {}", companion);
+                }
             } catch (StatusRuntimeException e) {
                 log.debug("sendMessage to {}: Error occurred, cause:, ", companion, e);
             }
@@ -66,33 +75,77 @@ public class MessageHandler {
         }
     }
 
-    public void sendFile(String companion, InputStream inputStream, String fileName) {
-        byte[] arr = new byte[FILE_PAGE_SIZE];
+    public void sendFile(String own, String companion, InputStream inputStream, String fileName) {
+        int readBytes;
+
         try {
-            inputStream.read(arr);
-            // todo:
-            // encrypt file -> encrypted file
-            // pass file with sendMessage
-            // delete encrypted file
+            long fileSize = Files.size(Path.of(fileName));
+            int numberOfPartitions = (int) (fileSize / FILE_PAGE_SIZE + (fileSize % FILE_PAGE_SIZE == 0 ? 0 : 1));
+            int currIndex = 0;
+
+            byte[] arr;
+
+            if (fileSize < FILE_PAGE_SIZE) {
+                arr = new byte[(int) fileSize];
+            } else {
+                arr = new byte[FILE_PAGE_SIZE];
+            }
+
+            var op = contextsRepository.get(companion);
+            if (op.isEmpty()) {
+                log.debug("Context for {} not found", companion);
+                return;
+            }
+
+            var context = op.get();
+
+            UUID id = UUID.randomUUID();
+
+            while ((readBytes = inputStream.read(arr)) != -1) {
+                if (readBytes < FILE_PAGE_SIZE) {
+                    byte[] tmpArr = new byte[readBytes];
+                    System.arraycopy(arr, 0, tmpArr, 0, readBytes);
+                    arr = tmpArr;
+                }
+
+                byte[] encryptedPart = context.encryptPart(arr, currIndex == 0);
+
+                Status response = blockingStub.sendMessage(MessageToCompanion.newBuilder()
+                        .setCompanionLogin(companion)
+                        .setUuid(id.toString())
+                        .setSender(own)
+                        .setFilename(fileName)
+                        .setPartitions(numberOfPartitions)
+                        .setCurrIndex(currIndex++)
+                        .setValue(ByteString.copyFrom(encryptedPart))
+                        .build());
+
+                if (response.getEnumStatus().equals(EnumStatus.ENUM_STATUS_OK)) {
+                    log.debug("Successfully sent file part to {}", companion);
+                } else {
+                    log.warn("Error sending file part to {}", companion);
+                }
+            }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("I/O exception happened to {} sent by {}", fileName, companion);
         }
     }
 
-    public Map<String, KafkaMessage> anyMessages(Login login) {
+
+    public List<MessageDto> anyMessages(Login login) {
         Iterator<MessageToCompanion> messages;
         try {
             messages = blockingStub.anyMessages(login);
         } catch (StatusRuntimeException e) {
             log.error("{}: passDiffieHellmanNumber: Error happened, cause: ", login.getLogin(), e);
-            return Collections.emptyMap();
+            return Collections.emptyList();
         }
 
         if (!messages.hasNext()) {
-            return Collections.emptyMap();
+            return Collections.emptyList();
         }
 
-        Map<String, KafkaMessage> messagesMap = new HashMap<>();
+        List<MessageDto> messagesMap = new LinkedList<>();
 
         while (messages.hasNext()) {
             var message = messages.next();

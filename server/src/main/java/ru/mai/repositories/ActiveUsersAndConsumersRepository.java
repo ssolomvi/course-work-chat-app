@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.springframework.stereotype.Repository;
 import ru.mai.kafka.KafkaManager;
+import ru.mai.kafka.model.MessageDto;
 
 import java.util.Map;
 import java.util.Optional;
@@ -15,7 +16,7 @@ public class ActiveUsersAndConsumersRepository {
     /**
      * One consumer per one user
      */
-    private Map<String, KafkaConsumer<String, String>> usersAndConsumers;
+    private Map<String, KafkaConsumer<String, MessageDto>> usersAndConsumers;
     public boolean isActive(String user) {
         if (usersAndConsumers == null) {
             return false;
@@ -24,7 +25,7 @@ public class ActiveUsersAndConsumersRepository {
         return usersAndConsumers.containsKey(user);
     }
 
-    public Optional<KafkaConsumer<String, String>> getConsumer(String user) {
+    public Optional<KafkaConsumer<String, MessageDto>> getConsumer(String user) {
         if (usersAndConsumers == null) {
             return Optional.empty();
         }
@@ -35,6 +36,11 @@ public class ActiveUsersAndConsumersRepository {
     public void putUser(String user) {
         if (usersAndConsumers == null) {
             usersAndConsumers = new ConcurrentHashMap<>();
+        }
+
+        if (usersAndConsumers.containsKey(user)) {
+            log.debug("{} is already online", user);
+            return;
         }
 
         String topicName = KafkaManager.getTopicName(user);

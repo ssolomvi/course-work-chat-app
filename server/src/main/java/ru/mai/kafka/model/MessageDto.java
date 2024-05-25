@@ -1,4 +1,4 @@
-package ru.mai.model;
+package ru.mai.kafka.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,7 +9,7 @@ import java.util.UUID;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class KafkaMessage {
+public class MessageDto {
     private UUID messageId; // generated
     private String sender;
     private String fileName; // if is a file

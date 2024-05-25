@@ -12,6 +12,9 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import ru.mai.kafka.model.MessageDto;
+import ru.mai.kafka.serialization.MessageDtoDeserializer;
+import ru.mai.kafka.serialization.MessageDtoSerializer;
 
 import java.util.Collections;
 import java.util.Map;
@@ -30,30 +33,30 @@ public class KafkaManager {
     private static final Map<String, String> TOPIC_CONFIG = Map.of(TopicConfig.RETENTION_MS_CONFIG, String.valueOf(60 * 60 * 1000)); // for an hour
     private static final int WAIT_AT_MOST_SEC = 30;
     private static final String TOPIC_PREFIX = "chat_app_topic";
-    private static final Integer FILE_PAGE_SIZE = 4092;
+    private static final Integer FILE_PAGE_SIZE = 65536;
 
     private static final AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS));
-    private static KafkaProducer<String, String> producer;
+    private static KafkaProducer<String, MessageDto> producer;
 
     public static String getTopicName(String userLogin) {
         return String.format("%s_%s", TOPIC_PREFIX, userLogin);
     }
 
 
-    public static KafkaConsumer<String, String> createKafkaConsumer(String topic) {
-        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(
+    public static KafkaConsumer<String, MessageDto> createKafkaConsumer(String topic) {
+        KafkaConsumer<String, MessageDto> consumer = new KafkaConsumer<>(
                 Map.of(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS,
                         ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID_CONFIG,
                         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, AUTO_OFFSET_RESET),
                 new StringDeserializer(),
-                new StringDeserializer()
+                new MessageDtoDeserializer()
         );
 
         consumer.subscribe(Collections.singleton(topic));
         return consumer;
     }
 
-    public static KafkaProducer<String, String> createKafkaProducer() {
+    public static KafkaProducer<String, MessageDto> createKafkaProducer() {
         if (producer == null) {
             int maxRequestSize = FILE_PAGE_SIZE >= 2000 ? FILE_PAGE_SIZE + FILE_PAGE_SIZE / 10 : FILE_PAGE_SIZE + 150;
             String maxRequestSizeConfig = Integer.toString(maxRequestSize);
@@ -63,7 +66,7 @@ public class KafkaManager {
                             ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString(),
                             ProducerConfig.MAX_REQUEST_SIZE_CONFIG, maxRequestSizeConfig),
                     new StringSerializer(),
-                    new StringSerializer());
+                    new MessageDtoSerializer());
         }
 
         return producer;

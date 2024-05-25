@@ -1,36 +1,34 @@
 package ru.mai.services.chatroom;
 
+import ru.mai.Algorithm;
+import ru.mai.EncryptionMode;
+import ru.mai.PaddingMode;
 import ru.mai.encryption_algorithm.EncryptionAlgorithm;
-import ru.mai.encryption_algorithm.impl.DEAL;
-import ru.mai.encryption_algorithm.impl.DES;
-import ru.mai.encryption_algorithm.impl.Rijndael;
+import ru.mai.encryption_algorithm.impl.*;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.encryption_context.SymmetricEncryptionContextImpl;
 import ru.mai.encryption_mode.EncryptionModeEnum;
 import ru.mai.encryption_padding_mode.PaddingModeEnum;
 
 public class ContextBuilder {
-    private static final int KEY_LENGTH_FOR_DEAL = DEAL.KEY_LENGTH24;
-    private static final int LEN_BLOCK_FOR_RIJNDAEL = Rijndael.KEY_LENGTH24;
-    private static final int KEY_LENGTH_FOR_RIJNDAEL = Rijndael.KEY_LENGTH24;
 
-    public static EncryptionModeEnum getEncryptionModeEnum(String encModeStr) {
+    public static EncryptionModeEnum getEncryptionModeEnum(EncryptionMode encModeStr) {
         return switch (encModeStr) {
-            case "Cipher block chaining" -> EncryptionModeEnum.CBC;
-            case "Propagating cipher block chaining" -> EncryptionModeEnum.PCBC;
-            case "Cipher feedback" -> EncryptionModeEnum.CFB;
-            case "Output feedback" -> EncryptionModeEnum.OFB;
-            case "Counter mode" -> EncryptionModeEnum.CTR;
-            case "Random Delta" -> EncryptionModeEnum.RANDOM_DELTA;
+            case ENCRYPTION_MODE_CBC -> EncryptionModeEnum.CBC;
+            case ENCRYPTION_MODE_PCBC -> EncryptionModeEnum.PCBC;
+            case ENCRYPTION_MODE_CFB -> EncryptionModeEnum.CFB;
+            case ENCRYPTION_MODE_OFB -> EncryptionModeEnum.OFB;
+            case ENCRYPTION_MODE_CTR -> EncryptionModeEnum.CTR;
+            case ENCRYPTION_MODE_RANDOM_DELTA -> EncryptionModeEnum.RANDOM_DELTA;
             default -> EncryptionModeEnum.ECB;
         };
     }
 
-    public static PaddingModeEnum getPaddingModeEnum(String padModeStr) {
+    public static PaddingModeEnum getPaddingModeEnum(PaddingMode padModeStr) {
         return switch (padModeStr) {
-            case "ANSI_X_923" -> PaddingModeEnum.ANSI_X_923;
-            case "PKCS7" -> PaddingModeEnum.PKCS7;
-            case "ISO10126" -> PaddingModeEnum.ISO10126;
+            case PADDING_MODE_ANSI_X_923 -> PaddingModeEnum.ANSI_X_923;
+            case PADDING_MODE_PKCS7 -> PaddingModeEnum.PKCS7;
+            case PADDING_MODE_ISO10126 -> PaddingModeEnum.ISO10126;
             default -> PaddingModeEnum.ZEROES;
         };
     }
@@ -50,36 +48,39 @@ public class ContextBuilder {
         return newKey;
     }
 
-    private static EncryptionAlgorithm getEncryptionAlgorithm(String algorithm, byte[] key) {
-        //            case "LOKI97" : {
-        //                return new LOKI97();
-        //            }
+    private static EncryptionAlgorithm getEncryptionAlgorithm(Algorithm algorithm, byte[] key) {
         //            case "MARS" : {
         //                return new MARS();
-        //            }
-        //            case "RC6" : {
-        //                return new RC6();
-        //            }
         return switch (algorithm) {
-            case "DEAL" -> {
-                byte[] normalizedKey = normalizeKey(key, KEY_LENGTH_FOR_DEAL);
+            case ALGORITHM_DEAL -> {
+                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.DEAL_KEY_LENGTH);
                 yield new DEAL(normalizedKey);
             }
-            case "Rijndael" -> {
-                byte[] normalizedKey = normalizeKey(key, KEY_LENGTH_FOR_RIJNDAEL);
-                yield new Rijndael(normalizedKey, (byte) 27, LEN_BLOCK_FOR_RIJNDAEL);
+            case ALGORITHM_RIJNDAEL -> {
+                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.RIJNDAEL_KEY_LENGTH);
+                yield new Rijndael(normalizedKey, (byte) 27, AlgorithmsConfigs.RIJNDAEL_BLOCK_LENGTH);
+            }
+            case ALGORITHM_RC6 -> {
+                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.RIJNDAEL_KEY_LENGTH);
+                yield new RC6(normalizedKey);
+            }
+            case ALGORITHM_LOKI97 -> {
+                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.RIJNDAEL_KEY_LENGTH);
+                yield new LOKI97(normalizedKey);
             }
             default -> {
-                byte[] normalizedKey = normalizeKey(key, DES.KEY_SIZE);
+                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.DES_KEY_LENGTH);
                 yield new DES(normalizedKey);
             }
-        };
+        }
+
+                ;
     }
 
 
     public static EncryptionContext createEncryptionContext(EncryptionModeEnum encryptionModeEnum,
                                                             PaddingModeEnum paddingModeEnum,
-                                                            String algorithm,
+                                                            Algorithm algorithm,
                                                             byte[] initVector,
                                                             byte[] normalizedKey) {
         if (encryptionModeEnum.needsInitVector()) {

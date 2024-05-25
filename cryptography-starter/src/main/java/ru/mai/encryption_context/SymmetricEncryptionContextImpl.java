@@ -56,9 +56,10 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
     private final int minBlockLengthForThreadForDecryption; // count of blocks * size of block to be decrypted by a single thread
     private final int algorithmBlockLengthForEncryption; // block length to pass in encrypt method
     private final int algorithmBlockLengthForDecryption; // block length to pass in decrypt method
-    private static final int FILE_PAGE_SIZE = 8092;
-    private static final int ONE_THREAD_BLOCK_SIZE = 1024; // size of byte array to pass for one thread to work on
+    private static final int FILE_PAGE_SIZE = 65536;
+    private static final int ONE_THREAD_BLOCK_SIZE = 8192; // size of byte array to pass for one thread to work on
     private final int filePageSizeModified;
+    private byte[] prevForDecryptPart;
 
 
     // region Constructing EncryptionContextAbstract
@@ -332,6 +333,10 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
     }
 
     public void encrypt(InputStream inputStream, OutputStream outputStream) throws IOException {
+        if (encryptionMode instanceof EncryptionModeWithInitVector encryptionModeWithInitVector) {
+            encryptionModeWithInitVector.invokeNextAsNew();
+        }
+
         byte[] toEncrypt = new byte[filePageSizeModified];
         int bytesRead;
 
@@ -354,6 +359,24 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
 
             outputStream.write(encrypted);
         }
+    }
+
+    @Override
+    public byte[] encryptPart(byte[] toEncrypt, boolean initAsNew) throws IOException {
+        if (initAsNew && encryptionMode instanceof EncryptionModeWithInitVector encryptionModeWithInitVector) {
+            encryptionModeWithInitVector.invokeNextAsNew();
+        }
+
+        toEncrypt = padInputByteArray(toEncrypt);
+
+        byte[] encrypted;
+        if (encryptionMode instanceof ECB || encryptionMode instanceof EncryptionModeCounter) {
+            encrypted = encryptionMultithreading(toEncrypt);
+        } else {
+            encrypted = encryptThreadTask(toEncrypt, -1);
+        }
+
+        return encrypted;
     }
 
     /**
@@ -532,36 +555,33 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
         return inputWithErasedPad;
     }
 
+    private byte[] getDecryptedBlock(byte[] input, byte[] prev) {
+        if (encryptionMode instanceof ECB
+                || encryptionMode instanceof EncryptionModeCounter
+                || encryptionMode instanceof EncryptionModePreviousNeeded) {
+            return decryptionMultithreading(input, prev);
+        }
+        return decryptThreadTask(input, -1, prev);
+    }
+
     @Override
     public byte[] decrypt(byte[] input) {
         if (encryptionMode instanceof EncryptionModeWithInitVector encryptionModeWithInitVector) {
             encryptionModeWithInitVector.invokeNextAsNew();
         }
 
-        byte[] decrypted;
-
-        if (encryptionMode instanceof ECB
-                || encryptionMode instanceof EncryptionModeCounter
-                || encryptionMode instanceof EncryptionModePreviousNeeded) {
-            decrypted = decryptionMultithreading(input, null);
-        } else {
-            decrypted = decryptThreadTask(input, -1, null);
-        }
-
-        return erasePad(decrypted);
+        return erasePad(getDecryptedBlock(input, null));
     }
 
     @Override
-    public void decrypt(InputStream inputStream, OutputStream outputStream, long fileSize) throws IOException {
+    public void decrypt(InputStream inputStream, OutputStream outputStream) throws IOException {
         byte[] prev = null;
         byte[] toDecrypt = new byte[filePageSizeModified];
 
         int bytesRead;
 
-        long offset = 0;
 
         while ((bytesRead = inputStream.read(toDecrypt)) != -1) {
-            offset += bytesRead;
 
             if (bytesRead != filePageSizeModified) {
                 // shrink block if needed
@@ -571,17 +591,10 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
             }
 
             // decrypt
-            byte[] decrypted;
-            if (encryptionMode instanceof ECB
-                    || encryptionMode instanceof EncryptionModeCounter
-                    || encryptionMode instanceof EncryptionModePreviousNeeded) {
-                decrypted = decryptionMultithreading(toDecrypt, prev);
-            } else {
-                decrypted = decryptThreadTask(toDecrypt, -1, null);
-            }
+            byte[] decrypted = getDecryptedBlock(toDecrypt, prev);
 
             // check if it is the last block and de-padding needed
-            if (bytesRead != filePageSizeModified || offset == fileSize) {
+            if (bytesRead != filePageSizeModified || inputStream.available() == 0) {
                 // de-padding needed
                 decrypted = erasePad(decrypted);
 
@@ -607,56 +620,9 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
             encryptionModeWithInitVector.invokeNextAsNew();
         }
 
-        byte[] prev = null;
-
         try (FileInputStream inputStream = new FileInputStream(input.toFile())) {
             try (FileOutputStream outputStream = new FileOutputStream(output.toFile())) {
-                byte[] toDecrypt = new byte[filePageSizeModified];
-
-                int bytesRead;
-
-                long fileSize = Files.size(input);
-                long offset = 0;
-
-                while ((bytesRead = inputStream.read(toDecrypt)) != -1) {
-                    offset += bytesRead;
-
-                    if (bytesRead != filePageSizeModified) {
-                        // shrink block if needed
-                        byte[] tmp = new byte[bytesRead];
-                        System.arraycopy(toDecrypt, 0, tmp, 0, bytesRead);
-                        toDecrypt = tmp;
-                    }
-
-                    // decrypt
-                    byte[] decrypted;
-                    if (encryptionMode instanceof ECB
-                            || encryptionMode instanceof EncryptionModeCounter
-                            || encryptionMode instanceof EncryptionModePreviousNeeded) {
-                        decrypted = decryptionMultithreading(toDecrypt, prev);
-                    } else {
-                        decrypted = decryptThreadTask(toDecrypt, -1, null);
-                    }
-
-                    // check if it is the last block and de-padding needed
-                    if (bytesRead != filePageSizeModified || offset == fileSize) {
-                        // de-padding needed
-                        decrypted = erasePad(decrypted);
-
-                        outputStream.write(decrypted);
-                        break;
-                    } else {
-                        // weak spot, every iteration allocating block size for prev =(
-                        prev = new byte[algorithmBlockLengthForDecryption];
-                        System.arraycopy(toDecrypt, toDecrypt.length - algorithmBlockLengthForDecryption,
-                                prev, 0,
-                                algorithmBlockLengthForDecryption);
-
-                        // write next byte
-                        outputStream.write(decrypted);
-                    }
-                }
-
+                decrypt(inputStream, outputStream);
             }
         } catch (FileNotFoundException e) {
             log.error("CARRRAMBA! For some reason file cannot be opened for reading");

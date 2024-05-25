@@ -13,10 +13,7 @@ import ru.mai.utils.Pair;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Component
@@ -33,11 +30,52 @@ public class ChatRoomHandler {
         this.contextsRepository = contextsRepository;
     }
 
-    public boolean initRoom(String own, String companion, String algorithm) {
+    private static EncryptionMode getEncryptionModeForGrpc(String mode) {
+        return switch (mode) {
+            case "CBC" -> EncryptionMode.ENCRYPTION_MODE_CBC;
+            case "PCBC" -> EncryptionMode.ENCRYPTION_MODE_PCBC;
+            case "CFB" -> EncryptionMode.ENCRYPTION_MODE_CFB;
+            case "OFB" -> EncryptionMode.ENCRYPTION_MODE_OFB;
+            case "CTR" -> EncryptionMode.ENCRYPTION_MODE_CTR;
+            case "RANDOM_DELTA" -> EncryptionMode.ENCRYPTION_MODE_RANDOM_DELTA;
+            default -> EncryptionMode.ENCRYPTION_MODE_ECB;
+        };
+    }
+
+    private static PaddingMode getPaddingModeForGrpc(String mode) {
+        return switch (mode) {
+            case "ANSI_X_923" -> PaddingMode.PADDING_MODE_ANSI_X_923;
+            case "PKCS7" -> PaddingMode.PADDING_MODE_PKCS7;
+            case "ISO10126" -> PaddingMode.PADDING_MODE_ISO10126;
+            default -> PaddingMode.PADDING_MODE_ZEROES;
+        };
+    }
+
+    private static Algorithm getAlgorithmForGrpc(String algorithm) {
+        return switch (algorithm) {
+            case "DEAL" -> Algorithm.ALGORITHM_DEAL;
+            case "Rijndael" -> Algorithm.ALGORITHM_RIJNDAEL;
+            case "LOKI97" -> Algorithm.ALGORITHM_LOKI97;
+            case "RC6" -> Algorithm.ALGORITHM_RC6;
+            case "MARS" -> Algorithm.ALGORITHM_MARS;
+            default -> Algorithm.ALGORITHM_DES;
+        };
+    }
+
+    /**
+     * Invokes room creation
+     * @param own own login
+     * @param companion companion login
+     * @param algorithm chosen algorithm
+     * @return Returns {@code true} if room was created, {@code false} if companion is offline or already sent a request
+     */
+    public boolean initRoom(String own, String companion, String algorithm, String encryptionMode, String paddingMode) {
         InitRoomRequest request = InitRoomRequest.newBuilder()
                 .setOwnLogin(own)
                 .setCompanionLogin(companion)
-                .setAlgorithm(algorithm)
+                .setAlgorithm(getAlgorithmForGrpc(algorithm))
+                .setEncryptionMode(getEncryptionModeForGrpc(encryptionMode))
+                .setPaddingMode(getPaddingModeForGrpc(paddingMode))
                 .build();
 
         var response = blockingStub.initRoom(request);
@@ -51,30 +89,39 @@ public class ChatRoomHandler {
         return true;
     }
 
-    public boolean checkForInitRoomRequests(Login login) {
-        boolean atLeastOneIsNotDummy = false;
+    /**
+     * Checks for init room requests
+     * @param login own login
+     * @return Returns list of initiators, if any
+     */
+    public List<String> checkForInitRoomRequests(Login login) {
+        List<String> initiators;
         try {
             Iterator<InitRoomResponse> responses = blockingStub.checkForInitRoomRequest(login);
 
             if (!responses.hasNext()) {
-                return false;
+                return Collections.emptyList();
             }
+
+            initiators = new LinkedList<>();
 
             final InitRoomResponse dummy = InitRoomResponse.getDefaultInstance();
             while (responses.hasNext()) {
                 InitRoomResponse response = responses.next();
                 if (response.equals(dummy)) {
+                    // happens in case there are no requests
                     continue;
                 }
                 // put metadata for to chat with
                 metadataRepository.put(response.getCompanionLogin(), response);
-                atLeastOneIsNotDummy = true;
+                initiators.add(response.getCompanionLogin());
             }
 
         } catch (StatusRuntimeException e) {
             log.error("{} checkForInitRoomRequests: Error happened, cause: ", login, e);
+            return Collections.emptyList();
         }
-        return atLeastOneIsNotDummy;
+        return initiators;
     }
 
     public void passDiffieHellmanNumber(String own, String companion, BigInteger g) {
@@ -121,6 +168,7 @@ public class ChatRoomHandler {
         while (numbers.hasNext()) {
             DiffieHellmanNumber companionNumber = numbers.next();
             if (companionNumber.equals(dummy)) {
+                // happens in case there are no dh numbers
                 continue;
             }
             log.debug("{} <- {}: got number {}", login.getLogin(), companionNumber.getCompanionLogin(), companionNumber.getNumber());
@@ -131,11 +179,11 @@ public class ChatRoomHandler {
                 continue;
             }
 
-            Pair<InitRoomResponse, BigInteger> metadata = op.get();
+            Pair<InitRoomResponse, BigInteger> metadata = op.get(); // metadata for encryption context creation and minor number
 
             EncryptionModeEnum encryptionMode = ContextBuilder.getEncryptionModeEnum(metadata.getKey().getEncryptionMode());
             PaddingModeEnum paddingMode = ContextBuilder.getPaddingModeEnum(metadata.getKey().getPaddingMode());
-            String algorithm = metadata.getKey().getAlgorithm();
+            Algorithm algorithm = metadata.getKey().getAlgorithm();
             byte[] initVector = metadata.getKey().getInitVector().getBytes(StandardCharsets.UTF_8);
             byte[] key = DiffieHellmanNumbersHandler.getKey(new BigInteger(companionNumber.getNumber()), metadata.getValue(), new BigInteger(metadata.getKey().getDiffieHellmanP()));
             // todo: insert into db new value (companion_login, encryption_mode, padding_mode, algorithm, init_vector, key)
@@ -157,42 +205,37 @@ public class ChatRoomHandler {
                 .build();
 
         var response = blockingStub.deleteRoom(chatRoomLogins);
-        deleteRoom(companion);
 
         return response.getStatus();
     }
 
-    private void deleteRoom(String companion) {
-        contextsRepository.remove(companion);
-        // todo: remove from db companion_login, encryption_mode, padding_mode, algorithm, init; remove from db all messages with companion_login
-    }
 
-    public Map<String, Boolean> checkForDeleteRoomRequests(Login login) {
+    public List<String> checkForDeleteRoomRequests(Login login) {
         try {
 
             var requests = blockingStub.checkForDeletedRoom(login);
 
             if (!requests.hasNext()) {
-                return Collections.emptyMap();
+                return Collections.emptyList();
             }
 
-            final Map<String, Boolean> deleted = new HashMap<>();
-            final CompanionStatus dummy = CompanionStatus.getDefaultInstance();
+            final List<String> deleted = new LinkedList<>();
+            final CompanionAndStatus dummy = CompanionAndStatus.getDefaultInstance();
 
             while (requests.hasNext()) {
-                CompanionStatus request = requests.next();
+                CompanionAndStatus request = requests.next();
                 if (request.equals(dummy)) {
+                    // happens in case there are no delete requests
                     continue;
                 }
-                deleted.put(request.getCompanionLogin(), request.getStatus());
-                deleteRoom(request.getCompanionLogin());;
+                deleted.add(request.getCompanionLogin());
             }
 
             return deleted;
         } catch (StatusRuntimeException e) {
             log.error("{}: checkForDeleteRoomRequests: Error occurred, cause: ", login.getLogin(), e);
         }
-        return Collections.emptyMap();
+        return Collections.emptyList();
     }
 
 }
