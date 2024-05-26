@@ -46,8 +46,23 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
     public void connect(Login request, StreamObserver<ConnectResponse> responseObserver) {
         log.debug("{}: connected", request.getLogin());
         usersRep.putUser(request.getLogin());
+
+        // todo: check authorized
         responseObserver.onNext(connectResponse);
         responseObserver.onCompleted();
+    }
+
+    @Override
+    public void registerChatRooms(ChatRoomLogins request, StreamObserver<Status> responseObserver) {
+        super.registerChatRooms(request, responseObserver);
+
+        if (chatRep.put(request.getOwnLogin(), request.getCompanionLogin())) {
+            log.debug("{} <-> {}: room registered successfully", request.getOwnLogin(), request.getCompanionLogin());
+        } else {
+            log.debug("{} -> {}: room already exists or logins are equal", request.getOwnLogin(), request.getCompanionLogin());
+            responseObserver.onNext(Status.newBuilder().setEnumStatus(EnumStatus.ENUM_STATUS_ERROR).build());
+            responseObserver.onCompleted();
+        }
     }
 
     @Override

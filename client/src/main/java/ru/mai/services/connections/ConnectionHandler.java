@@ -5,7 +5,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ru.mai.ChatRoomLogins;
 import ru.mai.ChatServiceGrpc;
+import ru.mai.EnumStatus;
 import ru.mai.Login;
+import ru.mai.db.repositories.ChatMetadataEntityRepository;
 
 import java.math.BigInteger;
 
@@ -15,9 +17,12 @@ import java.math.BigInteger;
 @Slf4j
 @Component
 public class ConnectionHandler {
+    private final ChatMetadataEntityRepository chatMetadataRepository;
     private final ChatServiceGrpc.ChatServiceBlockingStub blockingStub;
 
-    public ConnectionHandler(@Autowired ChatServiceGrpc.ChatServiceBlockingStub blockingStub) {
+    public ConnectionHandler(@Autowired ChatMetadataEntityRepository chatMetadataRepository,
+                             @Autowired ChatServiceGrpc.ChatServiceBlockingStub blockingStub) {
+        this.chatMetadataRepository = chatMetadataRepository;
         this.blockingStub = blockingStub;
     }
 
@@ -30,6 +35,19 @@ public class ConnectionHandler {
      */
     public BigInteger connect(Login login) {
         return new BigInteger(blockingStub.connect(login).getDiffieHellmanG());
+    }
+
+    public void registerChatRooms(String login) {
+        for (var room : chatMetadataRepository.findAll()) {
+            if (blockingStub.registerChatRooms(ChatRoomLogins.newBuilder()
+                    .setOwnLogin(login)
+                    .setCompanionLogin(room.getCompanion())
+                    .build()).getEnumStatus().equals(EnumStatus.ENUM_STATUS_OK)) {
+                log.debug("Registered chat room with {}", room.getCompanion());
+            } else {
+                log.warn("Error registering chat room with {}", room.getCompanion());
+            }
+        }
     }
 
     /**

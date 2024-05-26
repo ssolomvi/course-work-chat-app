@@ -3,6 +3,9 @@ package ru.mai.services;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import ru.mai.Login;
+import ru.mai.db.model.MessageEntity;
+import ru.mai.db.repositories.ChatMetadataEntityRepository;
+import ru.mai.db.repositories.MessageEntityRepository;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.model.MessageDto;
 import ru.mai.services.chatroom.ChatRoomHandler;
@@ -40,6 +43,12 @@ public class ChatClientService {
     private ContextsRepository contextsRepository;
     @Autowired
     private FilesUnderDownloadRepository fileUnderDownloadRepository;
+    @Autowired
+    private ChatMetadataEntityRepository metadataEntityRepository;
+    @Autowired
+    private MessageEntityRepository messageRepository;
+    @Autowired
+    private ChatMetadataEntityRepository chatMetadataRepository;
     private final String login;
     private final Login loginStructure;
     private BigInteger dhG;
@@ -69,6 +78,8 @@ public class ChatClientService {
 
     public void connect() {
         this.dhG = connectionHandler.connect(loginStructure);
+        connectionHandler.registerChatRooms(login);
+        chatRoomHandler.createContexts();
     }
 
     public void disconnect() {
@@ -82,7 +93,6 @@ public class ChatClientService {
     public boolean checkCompanionStatus(String companion) {
         return companionStatusesRepository.get(companion);
     }
-
 
     public boolean addRoom(String companion, String algorithm, String encryptionMode, String paddingMode) {
         if (chatRoomHandler.initRoom(login, companion, algorithm, encryptionMode, paddingMode)) {
@@ -115,18 +125,22 @@ public class ChatClientService {
             checkForDiffieHellmanNumbers -= response.size();
 
             contextsRepository.put(response);
-            // todo: make a new chat room (ui)
+            // todo: make a new chat rooms (ui)
         }
     }
 
     private void deleteRoomUtil(String companion) {
         contextsRepository.remove(companion);
-        // todo: remove from db companion_login, encryption_mode, padding_mode, algorithm, init; remove from db all messages with companion_login
+        // todo: send to ui request for room deletion
+
+        metadataEntityRepository.deleteById(companion);
+        messageRepository.deleteAllByCompanion(companion);
     }
 
 
     /**
      * Invokes room deletion
+     *
      * @param companion companion login
      * @return {@code true} if room was deleted, {@code false} otherwise (companion is not online or companion already requested deletion)
      */
@@ -164,13 +178,12 @@ public class ChatClientService {
             return;
         }
 
-        for(MessageDto msg : response) {
+        for (MessageDto msg : response) {
             if (msg.getFileName().isEmpty()) {
                 // it is a byte arr (not file)
                 // if it is a text, print message to chat
                 processByteArrayMessage(msg);
-            }
-            else {
+            } else {
                 // if it is a file, print message to chat that file (filename) may be found at location (location)
                 processFileMessage(msg);
             }
@@ -192,7 +205,8 @@ public class ChatClientService {
 
         byte[] decrypted = context.decrypt(msg.getValue());
         // todo: depict message after decryption
-        // todo: save to db here
+
+        messageRepository.save(new MessageEntity(id, sender, msg.getFileName(), new String(decrypted), false));
     }
 
     private void processFileMessage(MessageDto msg) {
@@ -223,6 +237,11 @@ public class ChatClientService {
                 if (tmpPath.toFile().renameTo(Path.of(msg.getFileName()).toFile())) {
                     log.info("Successfully decrypted file {} for {}", msg.getFileName(), msg.getSender());
                     // todo: depict with ui
+                    messageRepository.save(new MessageEntity(msg.getMessageId(),
+                            msg.getSender(),
+                            msg.getFileName(),
+                            "",
+                            true));
                 } else {
                     log.warn("Decrypting file {} for {} unsuccessful", msg.getFileName(), msg.getSender());
                 }

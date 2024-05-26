@@ -3,6 +3,7 @@ plugins {
     id 'org.springframework.boot' version '3.2.5'
     id 'io.spring.dependency-management' version '1.1.4'
     id "com.google.protobuf" version "0.9.4"
+    id 'com.vaadin' version '24.3.11'
 }
 
 group = 'ru.mai'
@@ -22,7 +23,19 @@ repositories {
     mavenCentral()
 }
 
+ext {
+    set('vaadinVersion', "24.3.11")
+}
+
 dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security:3.2.4'
+
+    implementation 'com.vaadin:vaadin-spring-boot-starter'
+    implementation 'com.vaadin:vaadin-core:24.3.11'
+    implementation 'com.vaadin:collaboration-engine:6.2.1'
+    implementation 'com.vaadin:vaadin-maven-plugin:24.3.11'
+
     // protobuf, gRPC
     implementation 'com.google.protobuf:protobuf-java:4.26.1'
     implementation 'io.grpc:grpc-all:1.63.0'
@@ -33,6 +46,8 @@ dependencies {
     // jpa
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation("org.postgresql:postgresql:42.2.24")
+
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
     // cryptography
     implementation project(path: ':cryptography-starter')

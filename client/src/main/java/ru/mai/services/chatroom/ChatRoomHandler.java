@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ru.mai.*;
+import ru.mai.db.model.ChatMetadataEntity;
+import ru.mai.db.repositories.ChatMetadataEntityRepository;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.encryption_mode.EncryptionModeEnum;
 import ru.mai.encryption_padding_mode.PaddingModeEnum;
@@ -21,50 +23,28 @@ public class ChatRoomHandler {
     private final ChatServiceGrpc.ChatServiceBlockingStub blockingStub;
     private final InitMetadataRepository metadataRepository;
     private final ContextsRepository contextsRepository;
+    private final ChatMetadataEntityRepository chatMetadataRepository;
 
     public ChatRoomHandler(@Autowired ChatServiceGrpc.ChatServiceBlockingStub blockingStub,
                            @Autowired InitMetadataRepository metadataRepository,
-                           @Autowired ContextsRepository contextsRepository) {
+                           @Autowired ContextsRepository contextsRepository,
+                           @Autowired ChatMetadataEntityRepository chatMetadataRepository) {
         this.blockingStub = blockingStub;
         this.metadataRepository = metadataRepository;
         this.contextsRepository = contextsRepository;
+        this.chatMetadataRepository = chatMetadataRepository;
     }
 
-    private static EncryptionMode getEncryptionModeForGrpc(String mode) {
-        return switch (mode) {
-            case "CBC" -> EncryptionMode.ENCRYPTION_MODE_CBC;
-            case "PCBC" -> EncryptionMode.ENCRYPTION_MODE_PCBC;
-            case "CFB" -> EncryptionMode.ENCRYPTION_MODE_CFB;
-            case "OFB" -> EncryptionMode.ENCRYPTION_MODE_OFB;
-            case "CTR" -> EncryptionMode.ENCRYPTION_MODE_CTR;
-            case "RANDOM_DELTA" -> EncryptionMode.ENCRYPTION_MODE_RANDOM_DELTA;
-            default -> EncryptionMode.ENCRYPTION_MODE_ECB;
-        };
-    }
-
-    private static PaddingMode getPaddingModeForGrpc(String mode) {
-        return switch (mode) {
-            case "ANSI_X_923" -> PaddingMode.PADDING_MODE_ANSI_X_923;
-            case "PKCS7" -> PaddingMode.PADDING_MODE_PKCS7;
-            case "ISO10126" -> PaddingMode.PADDING_MODE_ISO10126;
-            default -> PaddingMode.PADDING_MODE_ZEROES;
-        };
-    }
-
-    private static Algorithm getAlgorithmForGrpc(String algorithm) {
-        return switch (algorithm) {
-            case "DEAL" -> Algorithm.ALGORITHM_DEAL;
-            case "Rijndael" -> Algorithm.ALGORITHM_RIJNDAEL;
-            case "LOKI97" -> Algorithm.ALGORITHM_LOKI97;
-            case "RC6" -> Algorithm.ALGORITHM_RC6;
-            case "MARS" -> Algorithm.ALGORITHM_MARS;
-            default -> Algorithm.ALGORITHM_DES;
-        };
+    public void createContexts() {
+        for (var room : chatMetadataRepository.findAll()) {
+            contextsRepository.put(room.getCompanion(), room.getEncryptionMode(), room.getPaddingMode(), room.getAlgorithm(), room.getInitVector(), room.getKey());
+        }
     }
 
     /**
      * Invokes room creation
-     * @param own own login
+     *
+     * @param own       own login
      * @param companion companion login
      * @param algorithm chosen algorithm
      * @return Returns {@code true} if room was created, {@code false} if companion is offline or already sent a request
@@ -73,9 +53,9 @@ public class ChatRoomHandler {
         InitRoomRequest request = InitRoomRequest.newBuilder()
                 .setOwnLogin(own)
                 .setCompanionLogin(companion)
-                .setAlgorithm(getAlgorithmForGrpc(algorithm))
-                .setEncryptionMode(getEncryptionModeForGrpc(encryptionMode))
-                .setPaddingMode(getPaddingModeForGrpc(paddingMode))
+                .setAlgorithm(ContextBuilder.getAlgorithmForGrpc(algorithm))
+                .setEncryptionMode(ContextBuilder.getEncryptionModeForGrpc(encryptionMode))
+                .setPaddingMode(ContextBuilder.getPaddingModeForGrpc(paddingMode))
                 .build();
 
         var response = blockingStub.initRoom(request);
@@ -91,6 +71,7 @@ public class ChatRoomHandler {
 
     /**
      * Checks for init room requests
+     *
      * @param login own login
      * @return Returns list of initiators, if any
      */
@@ -137,13 +118,15 @@ public class ChatRoomHandler {
         String majorNumber = DiffieHellmanNumbersHandler.generateMajorNumber(g, new BigInteger(metadata.getKey().getDiffieHellmanP()), metadata.getValue()).toString();
 
         try {
-            blockingStub.passDiffieHellmanNumber(DiffieHellmanNumber.newBuilder()
+            if (blockingStub.passDiffieHellmanNumber(DiffieHellmanNumber.newBuilder()
                     .setOwnLogin(own)
                     .setCompanionLogin(companion)
                     .setNumber(majorNumber)
-                    .build());
-
-            log.debug("{} -> {}: Passed diffie-hellman number: {}", own, metadata.getKey(), majorNumber);
+                    .build()).getEnumStatus().equals(EnumStatus.ENUM_STATUS_OK)) {
+                log.debug("{} -> {}: Passed diffie-hellman number: {}", own, metadata.getKey(), majorNumber);
+            } else {
+                log.debug("{} -> {}: Error passing diffie-hellman number", own, metadata.getKey());
+            }
         } catch (StatusRuntimeException e) {
             log.error("{}: passDiffieHellmanNumber: Error happened, cause: ", own, e);
         }
@@ -186,7 +169,14 @@ public class ChatRoomHandler {
             Algorithm algorithm = metadata.getKey().getAlgorithm();
             byte[] initVector = metadata.getKey().getInitVector().getBytes(StandardCharsets.UTF_8);
             byte[] key = DiffieHellmanNumbersHandler.getKey(new BigInteger(companionNumber.getNumber()), metadata.getValue(), new BigInteger(metadata.getKey().getDiffieHellmanP()));
-            // todo: insert into db new value (companion_login, encryption_mode, padding_mode, algorithm, init_vector, key)
+
+            // save to db
+            chatMetadataRepository.save(new ChatMetadataEntity(companionNumber.getCompanionLogin(),
+                    metadata.getKey().getEncryptionMode().toString(),
+                    metadata.getKey().getPaddingMode().toString(),
+                    metadata.getKey().getAlgorithm().toString(),
+                    initVector, key));
+
 
             var context = ContextBuilder.createEncryptionContext(encryptionMode, paddingMode, algorithm, initVector, key);
 

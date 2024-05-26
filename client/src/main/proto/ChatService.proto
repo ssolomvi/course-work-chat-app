@@ -10,6 +10,8 @@ service ChatService {
     rpc Connect (Login) returns (ConnectResponse);
     rpc Disconnect (Login) returns (Status);
 
+    rpc RegisterChatRooms(ChatRoomLogins) returns (Status);
+
     rpc CheckCompanionStatus (ChatRoomLogins) returns (CompanionAndStatus);
 
     /*  -------------------------------- INIT / DELETE CHAT ROOM -------------------------------- */

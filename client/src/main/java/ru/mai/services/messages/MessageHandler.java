@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ru.mai.*;
+import ru.mai.db.model.MessageEntity;
+import ru.mai.db.repositories.MessageEntityRepository;
 import ru.mai.model.MessageDto;
 import ru.mai.services.ContextsRepository;
 
@@ -22,17 +24,24 @@ public class MessageHandler {
     private static final Integer FILE_PAGE_SIZE_FOR_ENCRYPTED = (int) (FILE_PAGE_SIZE * 0.1 + FILE_PAGE_SIZE);
     private final ChatServiceGrpc.ChatServiceBlockingStub blockingStub;
     private final ContextsRepository contextsRepository;
+    private final MessageEntityRepository messageRepository;
 
     public MessageHandler(@Autowired ChatServiceGrpc.ChatServiceBlockingStub blockingStub,
-                          @Autowired ContextsRepository contextsRepository) {
+                          @Autowired ContextsRepository contextsRepository,
+                          @Autowired MessageEntityRepository messageRepository) {
         this.blockingStub = blockingStub;
         this.contextsRepository = contextsRepository;
+        this.messageRepository = messageRepository;
     }
 
     public void sendMessage(MessageToCompanion message) {
         try {
-            blockingStub.sendMessage(message);
-            log.debug("Sent message to {}", message.getCompanionLogin());
+            if (blockingStub.sendMessage(message).getEnumStatus().equals(EnumStatus.ENUM_STATUS_OK)) {
+                log.debug("Sent message to {}", message.getCompanionLogin());
+            } else {
+                log.debug("Error sending message to {}", message.getCompanionLogin());
+            }
+
         } catch (StatusRuntimeException e) {
             log.debug("sendMessage to {}: Error occurred, cause:, ", message.getCompanionLogin(), e);
         }
@@ -62,6 +71,14 @@ public class MessageHandler {
             try {
                 Status sendStatus = blockingStub.sendMessage(data);
                 if (sendStatus.getEnumStatus().equals(EnumStatus.ENUM_STATUS_OK)) {
+                    // save to db
+                    messageRepository.save(new MessageEntity(
+                            UUID.fromString(data.getUuid()),
+                            data.getSender(),
+                            data.getFilename(), // must be == ""
+                            new String(arr),
+                            false));
+
                     log.debug("Sent byte array to {}", companion);
                 } else {
                     log.warn("Error sending simple text message to {}", companion);
@@ -100,6 +117,7 @@ public class MessageHandler {
             var context = op.get();
 
             UUID id = UUID.randomUUID();
+            String idStr = id.toString();
 
             while ((readBytes = inputStream.read(arr)) != -1) {
                 if (readBytes < FILE_PAGE_SIZE) {
@@ -112,7 +130,7 @@ public class MessageHandler {
 
                 Status response = blockingStub.sendMessage(MessageToCompanion.newBuilder()
                         .setCompanionLogin(companion)
-                        .setUuid(id.toString())
+                        .setUuid(idStr)
                         .setSender(own)
                         .setFilename(fileName)
                         .setPartitions(numberOfPartitions)
@@ -124,7 +142,16 @@ public class MessageHandler {
                     log.debug("Successfully sent file part to {}", companion);
                 } else {
                     log.warn("Error sending file part to {}", companion);
+                    return;
                 }
+
+                // save to db
+                messageRepository.save(new MessageEntity(
+                        id,
+                        own,
+                        fileName,
+                        "",
+                        true));
             }
         } catch (IOException e) {
             log.error("I/O exception happened to {} sent by {}", fileName, companion);
@@ -133,25 +160,29 @@ public class MessageHandler {
 
 
     public List<MessageDto> anyMessages(Login login) {
-        Iterator<MessageToCompanion> messages;
+        Iterator<MessageToCompanion> response;
         try {
-            messages = blockingStub.anyMessages(login);
+            response = blockingStub.anyMessages(login);
         } catch (StatusRuntimeException e) {
             log.error("{}: passDiffieHellmanNumber: Error happened, cause: ", login.getLogin(), e);
             return Collections.emptyList();
         }
 
-        if (!messages.hasNext()) {
+        if (!response.hasNext()) {
             return Collections.emptyList();
         }
 
-        List<MessageDto> messagesMap = new LinkedList<>();
+        List<MessageDto> messages = new LinkedList<>();
+        MessageToCompanion dummy = MessageToCompanion.getDefaultInstance();
 
-        while (messages.hasNext()) {
-            var message = messages.next();
-            // todo: deserilize
-//            messagesMap.put(message.getCompanionLogin(), message.getKafkaMessage());
+        while (response.hasNext()) {
+            var message = response.next();
+            if (message.equals(dummy)) {
+                continue;
+            }
+
+            messages.add(new MessageDto(UUID.fromString(message.getUuid()), message.getSender(), message.getFilename(), message.getPartitions(), message.getCurrIndex(), message.getValue().toByteArray()));
         }
-        return messagesMap;
+        return messages;
     }
 }
