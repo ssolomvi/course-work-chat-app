@@ -31,8 +31,8 @@ import com.vaadin.flow.theme.lumo.LumoUtility.Padding;
 import com.vaadin.flow.theme.lumo.LumoUtility.TextColor;
 import com.vaadin.flow.theme.lumo.LumoUtility.Whitespace;
 import com.vaadin.flow.theme.lumo.LumoUtility.Width;
-import ru.mai.chatapp.data.User;
-import ru.mai.chatapp.security.AuthenticatedUser;
+import ru.mai.db.model.User;
+import ru.mai.security.AuthenticatedUser;
 
 import java.util.Optional;
 
@@ -91,7 +91,7 @@ public class MainLayout extends AppLayout {
         Div layout = new Div();
         layout.addClassNames(Display.FLEX, AlignItems.CENTER, Padding.Horizontal.LARGE);
 
-        H1 appName = new H1("Курсовая работа, бегите, глупцы");
+        H1 appName = new H1("Chat");
         appName.addClassNames(Margin.Vertical.MEDIUM, Margin.End.AUTO, FontSize.LARGE);
         layout.add(appName);
 

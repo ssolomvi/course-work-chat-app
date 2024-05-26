@@ -7,8 +7,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.mai.chatapp.data.User;
-import ru.mai.chatapp.data.UserRepository;
+import ru.mai.db.model.User;
+import ru.mai.db.repositories.UserRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;

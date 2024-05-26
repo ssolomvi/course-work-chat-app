@@ -5,6 +5,7 @@ import com.vaadin.collaborationengine.CollaborationMessageInput;
 import com.vaadin.collaborationengine.CollaborationMessageList;
 import com.vaadin.collaborationengine.UserInfo;
 import com.vaadin.flow.component.AttachEvent;
+import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -13,6 +14,8 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.messages.MessageInput;
+import com.vaadin.flow.component.messages.MessageList;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -32,9 +35,11 @@ import com.vaadin.flow.theme.lumo.LumoUtility.Padding;
 import jakarta.annotation.security.RolesAllowed;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import ru.mai.chatapp.views.MainLayout;
+import ru.mai.services.ChatClientService;
+import ru.mai.views.MainLayout;
 
 import java.io.InputStream;
+import java.util.List;
 
 @PageTitle("Chat-rooms")
 @Route(value = "chat", layout = MainLayout.class)
@@ -65,20 +70,15 @@ public class ChatroomsView extends HorizontalLayout {
         }
     }
 
-    // TODO: load from db
-    private ChatInfo[] chats = new ChatInfo[]{new ChatInfo("Peter Parker"), new ChatInfo("Ilya"),
-            new ChatInfo("Alex")};
-    private ChatInfo currentChat = chats[0];
+    private ChatClientService clientService;
+
+    private List<ChatInfo> chats;
+    private ChatInfo currentChat;
     private Tabs tabs;
 
     public ChatroomsView() {
-        // connect to server - heartbeat, listen for new rooms
-        // init kafka consumer (communication with another person)
-
         addClassNames("chat-view", LumoUtility.Width.FULL, LumoUtility.Display.FLEX, LumoUtility.Flex.AUTO);
         setSpacing(false);
-
-        // initHeartBeat();
 
 
         // UserInfo is used by Collaboration Engine and is used to share details
@@ -91,6 +91,10 @@ public class ChatroomsView extends HorizontalLayout {
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         UserInfo userInfo = new UserInfo(userDetails.getUsername(), userDetails.getUsername());
 
+        clientService = new ChatClientService(userDetails.getUsername());
+        clientService.connect();
+        initChatInfo();
+
         tabs = createTabs(chats);
 
         // CollaborationMessageList displays messages that are in a
@@ -98,77 +102,37 @@ public class ChatroomsView extends HorizontalLayout {
         // the current user using the component, and a topic Id. Topic id can be
         // any freeform string. In this template, we have used the format
         // "chat/#general".
-        CollaborationMessageList list = new CollaborationMessageList(userInfo, currentChat.getCollaborationTopic());
+        MessageList list = new MessageList();
         list.setSizeFull();
 
         // `CollaborationMessageInput is a textfield and button, to be able to
         // submit new messages. To avoid having to set the same info into both
         // the message list and message input, the input takes in the list as an
         // constructor argument to get the information from there.
-        CollaborationMessageInput input = new CollaborationMessageInput(list);
+        MessageInput input = new MessageInput();
+
         input.setWidthFull();
 //        input.addAttachListener()
-
-        // upload files button
-        MemoryBuffer bufferAddFile = new MemoryBuffer();
-        Upload dropDisabledSingleFileUpload = new Upload(bufferAddFile);
-        dropDisabledSingleFileUpload.setDropAllowed(false);
-
-        dropDisabledSingleFileUpload.addSucceededListener(event -> {
-            // Get information about the uploaded file
-            InputStream fileData = bufferAddFile.getInputStream();
-            String fileName = event.getFileName();
-            long contentLength = event.getContentLength();
-            String mimeType = event.getMIMEType();
-
-            // Do something with the file data
-            // processFile(fileData, fileName, contentLength, mimeType);
-        });
 
         // Layouting
 
         VerticalLayout chatContainer = new VerticalLayout();
         chatContainer.addClassNames(LumoUtility.Flex.AUTO /*LumoUtility.Overflow.HIDDEN*/);
 
-        Aside side = new Aside();
-        side.addClassNames(LumoUtility.Display.FLEX, LumoUtility.FlexDirection.COLUMN, LumoUtility.Flex.GROW_NONE, LumoUtility.Flex.SHRINK_NONE, LumoUtility.Background.CONTRAST_5);
-        side.setWidth("18rem");
-        Header header = new Header();
-        header.addClassNames(LumoUtility.Display.FLEX, LumoUtility.FlexDirection.ROW, LumoUtility.Width.FULL, LumoUtility.AlignItems.CENTER, Padding.MEDIUM,
-                LumoUtility.BoxSizing.BORDER);
-        H3 channels = new H3("Chat rooms");
-        channels.addClassNames(LumoUtility.Flex.GROW, LumoUtility.Margin.NONE);
+        // side panel
+        Aside side = createAside();
 
-        CollaborationAvatarGroup avatarGroup = new CollaborationAvatarGroup(userInfo, "chat");
-        avatarGroup.setMaxItemsVisible(4);
-        avatarGroup.addClassNames(LumoUtility.Width.AUTO);
+        Dialog dialogAddChatRoom = createDialog();
+        Button buttonAddChatRoom = createButtonAddChatRoom(dialogAddChatRoom);
 
-        header.add(channels, avatarGroup);
+        Header header = createHeader();
 
-        // button add new chat room
-        Dialog dialogAddChatRoom = new Dialog();
-        dialogAddChatRoom.getElement().setAttribute("aria-label", "Add note");
-
-        VerticalLayout dialogLayout = createDialogLayout();
-        dialogAddChatRoom.add(dialogLayout);
-        dialogAddChatRoom.setHeaderTitle("Add chat room");
-
-        Button closeButton = new Button(new Icon("lumo", "cross"),
-                (e) -> dialogAddChatRoom.close());
-        closeButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        dialogAddChatRoom.getHeader().add(closeButton);
-
-        Button buttonAddChatRoom = new Button("Add chat room", e -> dialogAddChatRoom.open());
-        buttonAddChatRoom.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-//        buttonAddChatRoom.addClickListener(clickEvent -> {
-        // todo: rest api: create room
-        // todo: heartbeat conection server for listening server for new rooms
-//        });
-
-        // add to side
         side.add(header, tabs, buttonAddChatRoom);
 
         // messages container
+        // upload files button
+        Upload dropDisabledSingleFileUpload = createUpload();
+
         HorizontalLayout msgInputBtnAddFileContainer = new HorizontalLayout();
         msgInputBtnAddFileContainer.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.FlexDirection.ROW, LumoUtility.AlignItems.CENTER, Padding.SMALL);
         msgInputBtnAddFileContainer.setMaxWidth(chatContainer.getWidth());
@@ -188,19 +152,19 @@ public class ChatroomsView extends HorizontalLayout {
         tabs.addSelectedChangeListener(event -> {
             if (tabs.getComponentCount() != 0) {
                 currentChat = ((ChatTab) event.getSelectedTab()).getChatInfo();
-                list.setTopic(currentChat.getCollaborationTopic());
-            }
-            else {
+            } else {
                 currentChat = null;
-                list.setTopic("");
-                setMsgInputContainerAndProgressBarVisible(msgInputBtnAddFileContainer, progressBar, false);
 //                msgInputBtnAddFileContainer.setVisible(false);
 //                progressBar.setVisible(false);
             }
         });
     }
 
-    private Tabs createTabs(ChatInfo[] chats) {
+    private void initChatInfo() {
+        chats.addAll(clientService.getCompanionsLogins().stream().map(companion -> new ChatInfo(companion)).toList());
+    }
+
+    private Tabs createTabs(List<ChatInfo> chats) {
         tabs = new Tabs();
         for (ChatInfo chat : chats) {
             ChatTab tab = new ChatTab(chat);
@@ -208,9 +172,8 @@ public class ChatroomsView extends HorizontalLayout {
 
             tab.add(new Span("# " + chat.name));
 
-            // todo: problem with all tabs closed
             Button buttonCloseTab = new Button(new Icon("lumo", "cross"),
-                    (e) -> {
+                    e -> {
                         tabs.remove(tab);
                         int countOfChildrenTabs = tabs.getComponentCount();
                         if (countOfChildrenTabs != 0) {
@@ -232,18 +195,92 @@ public class ChatroomsView extends HorizontalLayout {
 
     }
 
+    private Upload createUpload() {
+        MemoryBuffer bufferAddFile = new MemoryBuffer();
+        Upload upload = new Upload(bufferAddFile);
+
+        upload.setDropAllowed(false);
+
+        upload.addSucceededListener(event -> {
+            // Get information about the uploaded file
+            InputStream fileData = bufferAddFile.getInputStream();
+            String fileName = event.getFileName();
+            long contentLength = event.getContentLength();
+            String mimeType = event.getMIMEType();
+
+            // Do something with the file data
+            // processFile(fileData, fileName, contentLength, mimeType);
+        });
+
+        return upload;
+    }
+
+    private Dialog createDialog() {
+        Dialog dialog = new Dialog();
+        dialog.getElement().setAttribute("aria-label", "Add note");
+
+        VerticalLayout dialogLayout = createDialogLayout();
+        dialog.add(dialogLayout);
+        dialog.setHeaderTitle("Add chat room");
+
+        Button closeButton = new Button(new Icon("lumo", "cross"), e -> dialog.close());
+        closeButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        dialog.getHeader().add(closeButton);
+
+        return dialog;
+    }
+
+    private Aside createAside() {
+        Aside side = new Aside();
+        side.addClassNames(LumoUtility.Display.FLEX, LumoUtility.FlexDirection.COLUMN, LumoUtility.Flex.GROW_NONE, LumoUtility.Flex.SHRINK_NONE, LumoUtility.Background.CONTRAST_5);
+        side.setWidth("18rem");
+        return side;
+    }
+
+    private Header createHeader() {
+        Header header = new Header();
+        header.addClassNames(LumoUtility.Display.FLEX, LumoUtility.FlexDirection.ROW, LumoUtility.Width.FULL, LumoUtility.AlignItems.CENTER, Padding.MEDIUM,
+                LumoUtility.BoxSizing.BORDER);
+//        H3 channels = new H3("Chat rooms");
+//        channels.addClassNames(LumoUtility.Flex.GROW, LumoUtility.Margin.NONE);
+
+        return header;
+    }
+
+    private Button createButtonAddChatRoom(Dialog dialogAddChatRoom) {
+        Button btn = new Button("Add chat room", e -> dialogAddChatRoom.open());
+        btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        btn.addClickListener(clickEvent -> {
+
+        });
+
+        return btn;
+    }
+
     private VerticalLayout createDialogLayout() {
         TextField loginField = new TextField("Login", "",
                 "User's login");
         loginField.getStyle().set("padding-top", "0");
 
-        Select<String> selectAlgorithm = new Select<>();
-        selectAlgorithm.setLabel("Encrypt by");
-        // todo: algorithms
-        selectAlgorithm.setItems("LOKI", "MARS", "RC6", "DES", "DEAL", "Rijndael", "RSA");
-        selectAlgorithm.setValue("LOKI");
+        Select<String> selectEncryptionMode = new Select<>();
+        selectEncryptionMode.setLabel("Encryption mode:");
+        selectEncryptionMode.setItems("ECB", "CBC", "PCBC", "OFB", "CFB", "CTR", "RANDOM_DELTA");
+        selectEncryptionMode.setValue("ECB");
 
-        VerticalLayout fieldLayout = new VerticalLayout(loginField, selectAlgorithm);
+        Select<String> selectPaddingMode = new Select<>();
+        selectPaddingMode.setLabel("Padding mode:");
+        selectPaddingMode.setItems("Zeroes", "ANSI_X_923", "ISO10126", "PKCS7");
+        selectPaddingMode.setValue("Zeroes");
+
+        Select<String> selectAlgorithm = new Select<>();
+        selectAlgorithm.setLabel("Algorithm:");
+        selectAlgorithm.setItems("LOKI97", "MARS", "RC6", "DES", "DEAL", "Rijndael", "RSA");
+        selectAlgorithm.setValue("LOKI97");
+
+        Button submit = new Button("Submit");
+        submit.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+        VerticalLayout fieldLayout = new VerticalLayout(loginField, selectEncryptionMode, selectPaddingMode, selectAlgorithm, submit);
         fieldLayout.setSpacing(false);
         fieldLayout.setPadding(false);
         fieldLayout.setAlignItems(Alignment.STRETCH);
@@ -257,6 +294,11 @@ public class ChatroomsView extends HorizontalLayout {
         Page page = attachEvent.getUI().getPage();
         page.retrieveExtendedClientDetails(details -> setMobile(details.getWindowInnerWidth() < 740));
         page.addBrowserWindowResizeListener(e -> setMobile(e.getWidth() < 740));
+    }
+
+    @Override
+    protected void onDetach(DetachEvent detachEvent) {
+        clientService.disconnect();
     }
 
     private void setMobile(boolean mobile) {

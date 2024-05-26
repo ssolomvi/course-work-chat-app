@@ -1,5 +1,6 @@
 package ru.mai.services;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import ru.mai.Login;
@@ -20,11 +21,11 @@ import java.io.RandomAccessFile;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import static ru.mai.services.messages.MessageHandler.FILE_PAGE_SIZE;
 
@@ -47,8 +48,8 @@ public class ChatClientService {
     private ChatMetadataEntityRepository metadataEntityRepository;
     @Autowired
     private MessageEntityRepository messageRepository;
-    @Autowired
-    private ChatMetadataEntityRepository chatMetadataRepository;
+    @Getter
+    private final Set<String> companionsLogins = ConcurrentHashMap.newKeySet();
     private final String login;
     private final Login loginStructure;
     private BigInteger dhG;
@@ -78,7 +79,7 @@ public class ChatClientService {
 
     public void connect() {
         this.dhG = connectionHandler.connect(loginStructure);
-        connectionHandler.registerChatRooms(login);
+        companionsLogins.addAll(connectionHandler.registerChatRooms(login));
         chatRoomHandler.createContexts();
     }
 
@@ -125,6 +126,7 @@ public class ChatClientService {
             checkForDiffieHellmanNumbers -= response.size();
 
             contextsRepository.put(response);
+            companionsLogins.addAll(response.keySet());
             // todo: make a new chat rooms (ui)
         }
     }
@@ -135,6 +137,7 @@ public class ChatClientService {
 
         metadataEntityRepository.deleteById(companion);
         messageRepository.deleteAllByCompanion(companion);
+        companionsLogins.remove(companion);
     }
 
 

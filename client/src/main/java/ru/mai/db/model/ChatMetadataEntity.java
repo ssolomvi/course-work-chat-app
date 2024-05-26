@@ -1,29 +1,26 @@
 package ru.mai.db.model;
 
 import jakarta.persistence.*;
-import lombok.Builder;
 import lombok.Getter;
-import ru.mai.Algorithm;
-import ru.mai.db.repositories.ChatMetadataEntityRepository;
-import ru.mai.encryption_mode.EncryptionModeEnum;
-import ru.mai.encryption_padding_mode.PaddingModeEnum;
+
+import java.io.Serializable;
 
 
 @Entity
 @Table(name = "chat_metadata")
 @Getter
-public class ChatMetadataEntity {
-//    @Id
-//    @GeneratedValue(strategy = GenerationType.IDENTITY)
-//    @Column(name = "chat_metadata_id")
-//    private Long chatId;
+public class ChatMetadataEntity implements Serializable {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "chat_metadata_id")
+    private Long chatId;
 
 
     /*
     * identity field should be numeric and not string based, both for space saving and for performance reasons
     * (matching keys on strings is slower than matching on integers)
     * */
-    @Id
+//    @Id
     @Column(name = "companion")
     private String companion;
 
@@ -41,8 +38,6 @@ public class ChatMetadataEntity {
 
     @Column(name = "key", columnDefinition = "bytea")
     private byte[] key;
-
-    ChatMetadataEntityRepository rep;
 
     protected ChatMetadataEntity() {
         // конструктор без аргументов, требуемый спецификацией JPA

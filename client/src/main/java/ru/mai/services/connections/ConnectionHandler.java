@@ -10,6 +10,8 @@ import ru.mai.Login;
 import ru.mai.db.repositories.ChatMetadataEntityRepository;
 
 import java.math.BigInteger;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Used for connecting / disconnecting from server with or without chat rooms
@@ -37,24 +39,33 @@ public class ConnectionHandler {
         return new BigInteger(blockingStub.connect(login).getDiffieHellmanG());
     }
 
-    public void registerChatRooms(String login) {
+    public List<String> registerChatRooms(String login) {
+        List<String> toReturn = new LinkedList<>();
+
         for (var room : chatMetadataRepository.findAll()) {
             if (blockingStub.registerChatRooms(ChatRoomLogins.newBuilder()
                     .setOwnLogin(login)
                     .setCompanionLogin(room.getCompanion())
                     .build()).getEnumStatus().equals(EnumStatus.ENUM_STATUS_OK)) {
+                toReturn.add(room.getCompanion());
                 log.debug("Registered chat room with {}", room.getCompanion());
             } else {
                 log.warn("Error registering chat room with {}", room.getCompanion());
             }
         }
+        return toReturn;
     }
 
     /**
      * Invoked for disconnecting from server
      */
     public void disconnect(Login login) {
-        blockingStub.disconnect(login);
+        if (blockingStub.disconnect(login).getEnumStatus().equals(EnumStatus.ENUM_STATUS_OK)) {
+            log.debug("Disconnected from server");
+        } else {
+            log.debug("Error disconnecting from server");
+        }
+
     }
 
 

@@ -1,9 +1,9 @@
 plugins {
     id 'java'
+    id 'com.vaadin' version '24.3.11'
     id 'org.springframework.boot' version '3.2.5'
     id 'io.spring.dependency-management' version '1.1.4'
     id "com.google.protobuf" version "0.9.4"
-    id 'com.vaadin' version '24.3.11'
 }
 
 group = 'ru.mai'
@@ -28,24 +28,29 @@ ext {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-security:3.2.4'
-
-    implementation 'com.vaadin:vaadin-spring-boot-starter'
-    implementation 'com.vaadin:vaadin-core:24.3.11'
-    implementation 'com.vaadin:collaboration-engine:6.2.1'
-    implementation 'com.vaadin:vaadin-maven-plugin:24.3.11'
+    // spring boot
+    implementation 'org.springframework.boot:spring-boot-starter'
 
     // protobuf, gRPC
     implementation 'com.google.protobuf:protobuf-java:4.26.1'
     implementation 'io.grpc:grpc-all:1.63.0'
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security:3.2.4'
+
+    // vaadin
+    implementation 'com.vaadin:vaadin-spring-boot-starter:24.3.11'
+    implementation 'com.vaadin:vaadin-core:24.3.11'
+    implementation 'com.vaadin:collaboration-engine:6.2.1'
+    implementation 'com.vaadin:vaadin-maven-plugin:24.3.11'
 
     // annotations
     implementation 'javax.annotation:javax.annotation-api:1.3.2'
 
     // jpa
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation("org.postgresql:postgresql:42.2.24")
+    // postgresql
+     implementation 'org.postgresql:postgresql:42.6.0'
 
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
@@ -57,14 +62,11 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     // docker containers
-    implementation 'org.springframework.boot:spring-boot-docker-compose' // or implementation?
+    implementation 'org.springframework.boot:spring-boot-docker-compose'
 
     // tests
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-    testImplementation platform('org.junit:junit-bom:5.9.1')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
 }
 
 // to tell IDEA where generated code for gRPC will be

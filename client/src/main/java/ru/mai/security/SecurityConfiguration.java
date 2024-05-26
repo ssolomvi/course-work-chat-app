@@ -8,7 +8,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-import ru.mai.chatapp.views.login.LoginView;
+import ru.mai.views.login.LoginView;
 
 @EnableWebSecurity
 @Configuration

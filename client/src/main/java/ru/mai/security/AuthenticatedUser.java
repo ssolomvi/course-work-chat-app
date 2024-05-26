@@ -4,8 +4,8 @@ import com.vaadin.flow.spring.security.AuthenticationContext;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.userdetails.UserDetails;
-import ru.mai.chatapp.data.User;
-import ru.mai.chatapp.data.UserRepository;
+import ru.mai.db.model.User;
+import ru.mai.db.repositories.UserRepository;
 
 import java.util.Optional;
 

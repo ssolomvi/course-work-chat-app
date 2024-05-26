@@ -7,6 +7,7 @@ import com.vaadin.flow.theme.lumo.Lumo;
 import javax.sql.DataSource;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.sql.init.SqlDataSourceScriptDatabaseInitializer;
 import org.springframework.boot.autoconfigure.sql.init.SqlInitializationProperties;
 import org.springframework.context.annotation.Bean;
@@ -28,7 +29,7 @@ public class Client implements AppShellConfigurator {
         SpringApplication.run(Client.class, args);
     }
 
-    @Bean
+    /*@Bean
     SqlDataSourceScriptDatabaseInitializer dataSourceScriptDatabaseInitializer(DataSource dataSource,
             SqlInitializationProperties properties, UserRepository repository) {
         // This bean ensures the database is only initialized when empty
@@ -41,5 +42,5 @@ public class Client implements AppShellConfigurator {
                 return false;
             }
         };
-    }
+    }*/
 }
