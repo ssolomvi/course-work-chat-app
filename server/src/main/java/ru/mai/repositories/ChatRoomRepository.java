@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 import ru.mai.util.CustomPair;
 
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -31,5 +33,17 @@ public class ChatRoomRepository {
 
     public boolean contains(String c1, String c2) {
         return chatRooms.contains(new CustomPair<>(c1, c2));
+    }
+
+    public List<String> getAllCompanions(String login) {
+        List<String> result = new LinkedList<>();
+        for (var pair : chatRooms) {
+            if (pair.getValue().equals(login)) {
+                result.add(pair.getKey());
+            } else if (pair.getKey().equals(login)) {
+                result.add(pair.getValue());
+            }
+        }
+        return result;
     }
 }

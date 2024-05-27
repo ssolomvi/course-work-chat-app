@@ -19,12 +19,9 @@ import java.util.List;
 @Slf4j
 @Component
 public class ConnectionHandler {
-    private final ChatMetadataEntityRepository chatMetadataRepository;
     private final ChatServiceGrpc.ChatServiceBlockingStub blockingStub;
 
-    public ConnectionHandler(@Autowired ChatMetadataEntityRepository chatMetadataRepository,
-                             @Autowired ChatServiceGrpc.ChatServiceBlockingStub blockingStub) {
-        this.chatMetadataRepository = chatMetadataRepository;
+    public ConnectionHandler(@Autowired ChatServiceGrpc.ChatServiceBlockingStub blockingStub) {
         this.blockingStub = blockingStub;
     }
 
@@ -39,22 +36,6 @@ public class ConnectionHandler {
         return new BigInteger(blockingStub.connect(login).getDiffieHellmanG());
     }
 
-    public List<String> registerChatRooms(String login) {
-        List<String> toReturn = new LinkedList<>();
-
-        for (var room : chatMetadataRepository.findAll()) {
-            if (blockingStub.registerChatRooms(ChatRoomLogins.newBuilder()
-                    .setOwnLogin(login)
-                    .setCompanionLogin(room.getCompanion())
-                    .build()).getEnumStatus().equals(EnumStatus.ENUM_STATUS_OK)) {
-                toReturn.add(room.getCompanion());
-                log.debug("Registered chat room with {}", room.getCompanion());
-            } else {
-                log.warn("Error registering chat room with {}", room.getCompanion());
-            }
-        }
-        return toReturn;
-    }
 
     /**
      * Invoked for disconnecting from server
@@ -66,19 +47,5 @@ public class ConnectionHandler {
             log.debug("Error disconnecting from server");
         }
 
-    }
-
-
-    /**
-     * Invoked for checking on companion's status
-     *
-     * @param own       invoker login
-     * @param companion companion login
-     * @return {@code true}, if companion is online, {@code false} otherwise
-     */
-    public boolean checkCompanionStatus(String own, String companion) {
-        ChatRoomLogins chatRoomLogins = ChatRoomLogins.newBuilder().setOwnLogin(own).setCompanionLogin(companion).build();
-
-        return blockingStub.checkCompanionStatus(chatRoomLogins).getStatus();
     }
 }

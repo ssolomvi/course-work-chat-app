@@ -1,70 +1,36 @@
 package ru.mai.repositories;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.springframework.stereotype.Repository;
-import ru.mai.kafka.KafkaManager;
-import ru.mai.kafka.model.MessageDto;
-
-import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Repository
 public class ActiveUsersAndConsumersRepository {
+    private final Set<String> activeUsers = ConcurrentHashMap.newKeySet();
     /**
      * One consumer per one user
      */
-    private Map<String, KafkaConsumer<String, MessageDto>> usersAndConsumers;
     public boolean isActive(String user) {
-        if (usersAndConsumers == null) {
-            return false;
-        }
-
-        return usersAndConsumers.containsKey(user);
-    }
-
-    public Optional<KafkaConsumer<String, MessageDto>> getConsumer(String user) {
-        if (usersAndConsumers == null) {
-            return Optional.empty();
-        }
-
-        return Optional.ofNullable(usersAndConsumers.get(user));
+        return activeUsers.contains(user);
     }
 
     public void putUser(String user) {
-        if (usersAndConsumers == null) {
-            usersAndConsumers = new ConcurrentHashMap<>();
-        }
-
-        if (usersAndConsumers.containsKey(user)) {
+        if (activeUsers.contains(user)) {
             log.debug("{} is already online", user);
             return;
         }
 
-        String topicName = KafkaManager.getTopicName(user);
-
-        KafkaManager.createTopic(topicName);
-
-        usersAndConsumers.put(user, KafkaManager.createKafkaConsumer(topicName));
+        activeUsers.add(user);
     }
 
     public void deleteUser(String user) {
-        if (!usersAndConsumers.containsKey(user)) {
-            return;
-        }
-
-        usersAndConsumers.get(user).close();
-
-        String topicName = KafkaManager.getTopicName(user);
-        KafkaManager.deleteTopic(topicName);
-
-        usersAndConsumers.remove(user);
+        activeUsers.remove(user);
     }
 
     public boolean contains(String user) {
-        return usersAndConsumers.containsKey(user);
+        return activeUsers.contains(user);
     }
 
 }

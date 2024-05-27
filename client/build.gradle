@@ -38,6 +38,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security:3.2.4'
 
+    // kafka
+    implementation 'org.springframework.kafka:spring-kafka'
+
     // vaadin
     implementation 'com.vaadin:vaadin-spring-boot-starter:24.3.11'
     implementation 'com.vaadin:vaadin-core:24.3.11'
@@ -66,6 +69,7 @@ dependencies {
 
     // tests
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

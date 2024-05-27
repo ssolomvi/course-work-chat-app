@@ -1,45 +1,40 @@
 package ru.mai.services;
 
-import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ru.mai.*;
-import ru.mai.kafka.KafkaMessageHandler;
-import ru.mai.kafka.model.MessageDto;
 import ru.mai.repositories.*;
 import ru.mai.util.InitRoomResponseBuilder;
 
-import java.util.UUID;
+import java.util.List;
 
 @Slf4j
 @Component
 public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
     private static final String DIFFIE_HELLMAN_G = "88005553535";
-
     private final ConnectResponse connectResponse = ConnectResponse.newBuilder().setDiffieHellmanG(DIFFIE_HELLMAN_G).build();
-
     private final ActiveUsersAndConsumersRepository usersRep;
+    private final NotifyDisconnectedUsersRepository notifyDisconnectedRep;
     private final DeleteRoomRequestsRepository deleteRequestsRep;
     private final AddRoomRequestsRepository addRequestsRep;
     private final DiffieHellmanNumbersRepository numbersRep;
     private final ChatRoomRepository chatRep;
-    private final KafkaMessageHandler messageHandler;
 
 
     public ChatService(@Autowired ActiveUsersAndConsumersRepository usersRep,
+                       @Autowired NotifyDisconnectedUsersRepository notifyDisconnectedRep,
                        @Autowired DeleteRoomRequestsRepository deleteRequestsRep,
                        @Autowired AddRoomRequestsRepository addRequestsRep,
                        @Autowired DiffieHellmanNumbersRepository numbersRep,
-                       @Autowired ChatRoomRepository chatRep,
-                       @Autowired KafkaMessageHandler messageHandler) {
+                       @Autowired ChatRoomRepository chatRep) {
         this.usersRep = usersRep;
+        this.notifyDisconnectedRep = notifyDisconnectedRep;
         this.deleteRequestsRep = deleteRequestsRep;
         this.addRequestsRep = addRequestsRep;
         this.numbersRep = numbersRep;
         this.chatRep = chatRep;
-        this.messageHandler = messageHandler;
     }
 
     @Override
@@ -47,22 +42,8 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
         log.debug("{}: connected", request.getLogin());
         usersRep.putUser(request.getLogin());
 
-        // todo: check authorized
         responseObserver.onNext(connectResponse);
         responseObserver.onCompleted();
-    }
-
-    @Override
-    public void registerChatRooms(ChatRoomLogins request, StreamObserver<Status> responseObserver) {
-        super.registerChatRooms(request, responseObserver);
-
-        if (chatRep.put(request.getOwnLogin(), request.getCompanionLogin())) {
-            log.debug("{} <-> {}: room registered successfully", request.getOwnLogin(), request.getCompanionLogin());
-        } else {
-            log.debug("{} -> {}: room already exists or logins are equal", request.getOwnLogin(), request.getCompanionLogin());
-            responseObserver.onNext(Status.newBuilder().setEnumStatus(EnumStatus.ENUM_STATUS_ERROR).build());
-            responseObserver.onCompleted();
-        }
     }
 
     @Override
@@ -73,25 +54,21 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
             responseObserver.onCompleted();
         }
         log.debug("{}: disconnected", request.getLogin());
+        notifyDisconnectedRep.put(request.getLogin(), chatRep.getAllCompanions(request.getLogin()));
         usersRep.deleteUser(request.getLogin());
         responseObserver.onNext(Status.newBuilder().setEnumStatus(EnumStatus.ENUM_STATUS_OK).build());
         responseObserver.onCompleted();
     }
 
+
+
     @Override
-    public void checkCompanionStatus(ChatRoomLogins request, StreamObserver<CompanionAndStatus> responseObserver) {
-        if (usersRep.isActive(request.getCompanionLogin())) {
-            log.debug("{} -> {}: companion is online", request.getOwnLogin(), request.getCompanionLogin());
-            responseObserver.onNext(CompanionAndStatus.newBuilder()
-                    .setCompanionLogin(request.getCompanionLogin())
-                    .setStatus(true)
-                    .build());
-        } else {
-            log.debug("{} -> {}: companion is offline", request.getOwnLogin(), request.getCompanionLogin());
-            responseObserver.onNext(CompanionAndStatus.newBuilder()
-                    .setCompanionLogin(request.getCompanionLogin())
-                    .setStatus(false)
-                    .build());
+    public void checkDisconnect(Login request, StreamObserver<Login> responseObserver) {
+        List<String> disconnectedCompanions = notifyDisconnectedRep.contains(request.getLogin());
+        if (!disconnectedCompanions.isEmpty()) {
+            for (var companion : disconnectedCompanions) {
+                responseObserver.onNext(Login.newBuilder().setLogin(companion).build());
+            }
         }
         responseObserver.onCompleted();
     }
@@ -236,6 +213,8 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
         responseObserver.onCompleted();
     }
 
+    /*
+
     @Override
     public void sendMessage(MessageToCompanion request, StreamObserver<Status> responseObserver) {
         if (usersRep.isActive(request.getCompanionLogin())) {
@@ -281,5 +260,5 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
         }
 
         responseObserver.onCompleted();
-    }
+    }*/
 }

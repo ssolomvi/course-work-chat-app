@@ -1,22 +1,17 @@
 package ru.mai.views.chatrooms;
 
-import com.vaadin.collaborationengine.CollaborationAvatarGroup;
-import com.vaadin.collaborationengine.CollaborationMessageInput;
-import com.vaadin.collaborationengine.CollaborationMessageList;
 import com.vaadin.collaborationengine.UserInfo;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.DetachEvent;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
-import com.vaadin.flow.component.html.Aside;
-import com.vaadin.flow.component.html.H3;
-import com.vaadin.flow.component.html.Header;
-import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.html.*;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.messages.MessageInput;
 import com.vaadin.flow.component.messages.MessageList;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.page.Page;
@@ -27,25 +22,40 @@ import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.RouteAlias;
+import com.vaadin.flow.router.*;
+import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import com.vaadin.flow.theme.lumo.LumoUtility.Padding;
-import jakarta.annotation.security.RolesAllowed;
+import lombok.Getter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import ru.mai.services.ChatClientService;
 import ru.mai.views.MainLayout;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @PageTitle("Chat-rooms")
 @Route(value = "chat", layout = MainLayout.class)
-@RouteAlias(value = "", layout = MainLayout.class)
-@RolesAllowed("USER")
-public class ChatroomsView extends HorizontalLayout {
+public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<String> {
+    private String login = "dummy";
+
+    public static String createParameter(String username) {
+        return username;
+    }
+
+    @Override
+    public void setParameter(BeforeEvent event, @WildcardParameter String parameter) {
+        Notification.show(String.format("Hello, %s!", parameter));
+        this.login = parameter;
+
+    }
+
+    @Getter
     public static class ChatTab extends Tab {
         private final ChatInfo chatInfo;
 
@@ -53,13 +63,10 @@ public class ChatroomsView extends HorizontalLayout {
             this.chatInfo = chatInfo;
         }
 
-        public ChatInfo getChatInfo() {
-            return chatInfo;
-        }
     }
 
     public static class ChatInfo {
-        private String name;
+        private final String name;
 
         private ChatInfo(String name) {
             this.name = name;
@@ -70,72 +77,71 @@ public class ChatroomsView extends HorizontalLayout {
         }
     }
 
-    private ChatClientService clientService;
+//    private final ChatClientService clientService;
 
-    private List<ChatInfo> chats;
+    private final List<ChatInfo> chats = new CopyOnWriteArrayList<>();
     private ChatInfo currentChat;
     private Tabs tabs;
 
-    public ChatroomsView() {
+    public ChatroomsView(RouteParameters routeParameters,   @Autowired ChatClientService clientService) {
+        this.login = routeParameters.get("chat").orElse("");
+        Notification.show(String.format("Hello, %s!", login));
+
+        // todo: путь (route) должен меняться при переключении на табу чата
+        // т.е.: когда пользователь только заходит, путь страницы /login
+        // ниже не обязательно
+        // когда появляется первый активный чат, путь страницы /login/chat1, где chat1 может быть логином собеседника
+        // при нескольких чатах появляется возможность выбирать чат.
+        // В зависимости от открытого таба путь страницы превращается в /login/chatN
+
+//        this.clientService = clientService;
+//        this.clientService.setLogin(login); // todo:
+        // this.clientService.connect();
+
         addClassNames("chat-view", LumoUtility.Width.FULL, LumoUtility.Display.FLEX, LumoUtility.Flex.AUTO);
         setSpacing(false);
-
-
-        // UserInfo is used by Collaboration Engine and is used to share details
-        // of users to each other to able collaboration. Replace this with
-        // information about the actual user that is logged, providing a user
-        // identifier, and the user's real name. You can also provide the users
-        // avatar by passing an url to the image as a third parameter, or by
-        // configuring an `ImageProvider` to `avatarGroup`.
 
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         UserInfo userInfo = new UserInfo(userDetails.getUsername(), userDetails.getUsername());
 
-        clientService = new ChatClientService(userDetails.getUsername());
-        clientService.connect();
-        initChatInfo();
-
-        tabs = createTabs(chats);
-
-        // CollaborationMessageList displays messages that are in a
-        // Collaboration Engine topic. You should give in the user details of
-        // the current user using the component, and a topic Id. Topic id can be
-        // any freeform string. In this template, we have used the format
-        // "chat/#general".
-        MessageList list = new MessageList();
-        list.setSizeFull();
-
-        // `CollaborationMessageInput is a textfield and button, to be able to
-        // submit new messages. To avoid having to set the same info into both
-        // the message list and message input, the input takes in the list as an
-        // constructor argument to get the information from there.
-        MessageInput input = new MessageInput();
-
-        input.setWidthFull();
-//        input.addAttachListener()
-
         // Layouting
 
-        VerticalLayout chatContainer = new VerticalLayout();
-        chatContainer.addClassNames(LumoUtility.Flex.AUTO /*LumoUtility.Overflow.HIDDEN*/);
+
 
         // side panel
         Aside side = createAside();
+        VerticalLayout chatContainer = createChatContainer();
+        add(chatContainer, side);
 
-        Dialog dialogAddChatRoom = createDialog();
-        Button buttonAddChatRoom = createButtonAddChatRoom(dialogAddChatRoom);
 
-        Header header = createHeader();
+//        Header header = createHeader();
 
-        side.add(header, tabs, buttonAddChatRoom);
+//        side.add(header, tabs, buttonAddChatRoom);
 
         // messages container
         // upload files button
+
+
+        // Change the topic id of the chat when a new tab is selected
+
+    }
+
+    private VerticalLayout createChatContainer() {
+        VerticalLayout chatContainer = new VerticalLayout();
+//        chatContainer.addClassNames(LumoUtility.Flex.AUTO);
+        chatContainer.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.Overflow.HIDDEN);
+
+        MessageList list = new MessageList();
+        list.setSizeFull();
+
+        MessageInput input = new MessageInput();
+        input.setWidthFull();
+
         Upload dropDisabledSingleFileUpload = createUpload();
 
         HorizontalLayout msgInputBtnAddFileContainer = new HorizontalLayout();
-        msgInputBtnAddFileContainer.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.FlexDirection.ROW, LumoUtility.AlignItems.CENTER, Padding.SMALL);
         msgInputBtnAddFileContainer.setMaxWidth(chatContainer.getWidth());
+        msgInputBtnAddFileContainer.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.FlexDirection.ROW, LumoUtility.Width.AUTO, LumoUtility.AlignItems.CENTER, Padding.SMALL);
 
         msgInputBtnAddFileContainer.add(dropDisabledSingleFileUpload, input);
 
@@ -144,11 +150,18 @@ public class ChatroomsView extends HorizontalLayout {
 
         chatContainer.add(list, msgInputBtnAddFileContainer, progressBar);
 
-        add(chatContainer, side);
         setSizeFull();
         expand(list);
 
-        // Change the topic id of the chat when a new tab is selected
+        return chatContainer;
+    }
+
+    private Aside createAside() {
+        Aside side = new Aside();
+        side.addClassNames(LumoUtility.Display.FLEX, LumoUtility.FlexDirection.COLUMN, LumoUtility.Flex.GROW_NONE, LumoUtility.Flex.SHRINK_NONE, LumoUtility.Background.CONTRAST_5);
+        side.setWidth("18rem");
+
+        tabs = createTabs(chats);
         tabs.addSelectedChangeListener(event -> {
             if (tabs.getComponentCount() != 0) {
                 currentChat = ((ChatTab) event.getSelectedTab()).getChatInfo();
@@ -158,10 +171,12 @@ public class ChatroomsView extends HorizontalLayout {
 //                progressBar.setVisible(false);
             }
         });
-    }
 
-    private void initChatInfo() {
-        chats.addAll(clientService.getCompanionsLogins().stream().map(companion -> new ChatInfo(companion)).toList());
+        Dialog dialogAddChatRoom = createDialog();
+        Button buttonAddChatRoom = createButtonAddChatRoom(dialogAddChatRoom);
+        side.add(tabs, buttonAddChatRoom);
+
+        return side;
     }
 
     private Tabs createTabs(List<ChatInfo> chats) {
@@ -230,23 +245,6 @@ public class ChatroomsView extends HorizontalLayout {
         return dialog;
     }
 
-    private Aside createAside() {
-        Aside side = new Aside();
-        side.addClassNames(LumoUtility.Display.FLEX, LumoUtility.FlexDirection.COLUMN, LumoUtility.Flex.GROW_NONE, LumoUtility.Flex.SHRINK_NONE, LumoUtility.Background.CONTRAST_5);
-        side.setWidth("18rem");
-        return side;
-    }
-
-    private Header createHeader() {
-        Header header = new Header();
-        header.addClassNames(LumoUtility.Display.FLEX, LumoUtility.FlexDirection.ROW, LumoUtility.Width.FULL, LumoUtility.AlignItems.CENTER, Padding.MEDIUM,
-                LumoUtility.BoxSizing.BORDER);
-//        H3 channels = new H3("Chat rooms");
-//        channels.addClassNames(LumoUtility.Flex.GROW, LumoUtility.Margin.NONE);
-
-        return header;
-    }
-
     private Button createButtonAddChatRoom(Dialog dialogAddChatRoom) {
         Button btn = new Button("Add chat room", e -> dialogAddChatRoom.open());
         btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
@@ -298,10 +296,175 @@ public class ChatroomsView extends HorizontalLayout {
 
     @Override
     protected void onDetach(DetachEvent detachEvent) {
-        clientService.disconnect();
+//        clientService.disconnect();
     }
 
     private void setMobile(boolean mobile) {
         tabs.setOrientation(mobile ? Tabs.Orientation.HORIZONTAL : Tabs.Orientation.VERTICAL);
     }
+
+    public class MessagesLayoutWrapper {
+        private final VerticalLayout messagesLayout;
+
+        public enum Destination {
+            OWN,
+            ANOTHER
+        }
+
+        public MessagesLayoutWrapper(VerticalLayout messagesLayout) {
+            this.messagesLayout = messagesLayout;
+        }
+
+        public void showTextMessage(String textMessage, Destination destination) {
+            Optional<UI> uiOptional = getUI();
+
+            if (uiOptional.isPresent()) {
+                UI ui = uiOptional.get();
+
+                ui.access(() -> {
+                    Div messageDiv = new Div();
+                    messageDiv.setText(textMessage);
+
+                    if (destination.equals(Destination.OWN)) {
+                        messageDiv.getStyle()
+                                .set("margin-left", "auto")
+                                .set("background-color", "#cceeff");
+
+//                        setPossibilityToDelete(messagesLayout, messageDiv);
+                    } else {
+                        messageDiv.getStyle()
+                                .set("margin-right", "auto")
+                                .set("background-color", "#f2f2f2");
+                    }
+
+                    messageDiv.getStyle()
+                            .set("border-radius", "5px")
+                            .set("padding", "10px")
+                            .set("border", "1px solid #ddd");
+
+                    messagesLayout.add(messageDiv);
+                    messagesLayout.getElement().executeJs("this.scrollTo(0, this.scrollHeight);");
+                });
+            }
+        }
+
+        public void showImageMessage(String nameFile, byte[] data, Destination destination) {
+            Optional<UI> uiOptional = getUI();
+
+            if (uiOptional.isPresent()) {
+                UI ui = uiOptional.get();
+
+                ui.access(() -> {
+                    Div imageDiv = new Div();
+
+                    StreamResource resource = new StreamResource(nameFile, () -> new ByteArrayInputStream(data));
+                    Image image = new Image(resource, "Uploaded image");
+
+                    imageDiv.add(image);
+
+                    if (destination.equals(Destination.OWN)) {
+                        imageDiv.getStyle()
+                                .set("margin-left", "auto")
+                                .set("background-color", "#cceeff");
+//                        setPossibilityToDelete(messagesLayout, imageDiv);
+                    } else {
+                        imageDiv.getStyle()
+                                .set("margin-right", "auto")
+                                .set("background-color", "#f2f2f2");
+                    }
+
+                    imageDiv.getStyle()
+                            .set("overflow", "hidden")
+                            .set("padding", "10px")
+                            .set("border-radius", "5px")
+                            .set("border", "1px solid #ddd")
+                            .set("width", "60%")
+                            .set("flex-shrink", "0");
+
+                    image.getStyle()
+                            .set("width", "100%")
+                            .set("height", "100%");
+
+                    messagesLayout.add(imageDiv);
+                    messagesLayout.getElement().executeJs("this.scrollTo(0, this.scrollHeight);");
+                });
+            }
+        }
+
+        public void showFileMessage(String nameFile, byte[] data, Destination destination) {
+            Optional<UI> uiOptional = getUI();
+
+            if (uiOptional.isPresent()) {
+                UI ui = uiOptional.get();
+
+                ui.access(() -> {
+                    Div fileDiv = new Div();
+                    StreamResource resource = new StreamResource(nameFile, () -> new ByteArrayInputStream(data));
+
+                    Anchor downloadLink = new Anchor(resource, "");
+                    downloadLink.getElement().setAttribute("download", true);
+
+                    Button downloadButton = new Button(nameFile, event -> downloadLink.getElement().callJsFunction("click"));
+
+                    fileDiv.add(downloadButton, downloadLink);
+
+                    if (destination.equals(Destination.OWN)) {
+                        fileDiv.getStyle()
+                                .set("margin-left", "auto")
+                                .set("background-color", "#cceeff");
+
+//                        setPossibilityToDelete(messagesLayout, fileDiv);
+                    } else {
+                        fileDiv.getStyle()
+                                .set("margin-right", "auto")
+                                .set("background-color", "#f2f2f2");
+                    }
+
+                    fileDiv.getStyle()
+                            .set("display", "inline-block")
+                            .set("max-width", "80%")
+                            .set("overflow", "hidden")
+                            .set("padding", "10px")
+                            .set("border-radius", "5px")
+                            .set("border", "1px solid #ddd")
+                            .set("flex-shrink", "0");
+
+                    messagesLayout.add(fileDiv);
+                    messagesLayout.getElement().executeJs("this.scrollTo(0, this.scrollHeight);");
+                });
+            }
+        }
+
+//        private void setPossibilityToDelete(VerticalLayout messagesLayout, Div fileDiv) {
+//            messagesLayout.getElement().executeJs("this.scrollTo(0, this.scrollHeight);");
+//
+//            fileDiv.addClickListener(event -> {
+//                int indexMessage = messagesLayout.indexOf(fileDiv);
+//                messagesLayout.remove(fileDiv);
+//                kafkaWriter.processing(new Message("delete_message", "text", null, indexMessage, null).toBytes(), outputTopic);
+//            });
+//        }
+
+        private void clearMessages() {
+            Optional<UI> uiOptional = getUI();
+
+            if (uiOptional.isPresent()) {
+                UI ui = uiOptional.get();
+                ui.access(messagesLayout::removeAll);
+            }
+        }
+//
+//        private void deleteMessage(int index) {
+//            Optional<UI> uiOptional = getUI();
+//
+//            if (uiOptional.isPresent()) {
+//                UI ui = uiOptional.get();
+//                ui.access(() -> {
+//                    Component componentToRemove = messagesLayout.getComponentAt(index);
+//                    messagesLayout.remove(componentToRemove);
+//                });
+//            }
+//        }
+    }
+
 }

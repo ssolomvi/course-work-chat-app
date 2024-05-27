@@ -25,16 +25,4 @@ public class CompanionStatusesRepository {
         }
         return status;
     }
-
-    public void update(ConnectionHandler connectionHandler, String login) {
-        if (companionsStatuses.isEmpty()) {
-            return;
-        }
-
-        companionsStatuses.replaceAll((c, v) -> !connectionHandler.checkCompanionStatus(login, c));
-
-//        for (String companion : companionsStatuses.keySet()) {
-//            companionsStatuses.put(companion, !connectionHandler.checkCompanionStatus(login, companion));
-//        }
-    }
 }

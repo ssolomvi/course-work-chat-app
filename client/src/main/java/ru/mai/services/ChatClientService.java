@@ -3,12 +3,13 @@ package ru.mai.services;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import ru.mai.Login;
 import ru.mai.db.model.MessageEntity;
 import ru.mai.db.repositories.ChatMetadataEntityRepository;
 import ru.mai.db.repositories.MessageEntityRepository;
 import ru.mai.encryption_context.EncryptionContext;
-import ru.mai.model.MessageDto;
+import ru.mai.kafka.model.MessageDto;
 import ru.mai.services.chatroom.ChatRoomHandler;
 import ru.mai.services.connections.ConnectionHandler;
 import ru.mai.services.messages.MessageHandler;
@@ -21,52 +22,63 @@ import java.io.RandomAccessFile;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static ru.mai.services.messages.MessageHandler.FILE_PAGE_SIZE;
 
 @Slf4j
+@Component
 public class ChatClientService {
     private final ScheduledExecutorService scheduled = Executors.newSingleThreadScheduledExecutor();
-    @Autowired
-    private ConnectionHandler connectionHandler;
-    @Autowired
-    private ChatRoomHandler chatRoomHandler;
-    @Autowired
-    private MessageHandler messageHandler;
-    @Autowired
-    private CompanionStatusesRepository companionStatusesRepository;
-    @Autowired
-    private ContextsRepository contextsRepository;
-    @Autowired
-    private FilesUnderDownloadRepository fileUnderDownloadRepository;
-    @Autowired
-    private ChatMetadataEntityRepository metadataEntityRepository;
-    @Autowired
-    private MessageEntityRepository messageRepository;
+    private final ConnectionHandler connectionHandler;
+    private final ChatRoomHandler chatRoomHandler;
+    private final MessageHandler messageHandler;
+    private final CompanionStatusesRepository companionStatusesRepository;
+    private final ContextsRepository contextsRepository;
+    private final FilesUnderDownloadRepository fileUnderDownloadRepository;
+    private final ChatMetadataEntityRepository metadataEntityRepository;
+    private final MessageEntityRepository messageRepository;
     @Getter
     private final Set<String> companionsLogins = ConcurrentHashMap.newKeySet();
-    private final String login;
-    private final Login loginStructure;
+    private String login;
+    private Login loginStructure;
     private BigInteger dhG;
     private int checkForDiffieHellmanNumbers = 0;
 
-    public ChatClientService(String login) {
+    public ChatClientService(@Autowired ConnectionHandler connectionHandler,
+                             @Autowired ChatRoomHandler chatRoomHandler,
+                             @Autowired MessageHandler messageHandler,
+                             @Autowired CompanionStatusesRepository companionStatusesRepository,
+                             @Autowired ContextsRepository contextsRepository,
+                             @Autowired FilesUnderDownloadRepository fileUnderDownloadRepository,
+                             @Autowired ChatMetadataEntityRepository metadataEntityRepository,
+                             @Autowired MessageEntityRepository messageRepository) {
+        this.connectionHandler = connectionHandler;
+        this.chatRoomHandler = chatRoomHandler;
+        this.messageHandler = messageHandler;
+        this.companionStatusesRepository = companionStatusesRepository;
+        this.contextsRepository = contextsRepository;
+        this.fileUnderDownloadRepository = fileUnderDownloadRepository;
+        this.metadataEntityRepository = metadataEntityRepository;
+        this.messageRepository = messageRepository;
+        pingServer();
+    }
+
+    public void setLogin(String login) {
         this.login = login;
         this.loginStructure = Login.newBuilder().setLogin(login).build();
-
-        pingServer();
     }
 
     private void pingServer() {
         log.debug("{}: pinging server", login);
         scheduled.scheduleAtFixedRate(
                 () -> {
-                    checkCompanionsStatuses();
                     checkForInitRoomRequests();
                     checkForDeleteRoomRequest();
                     if (checkForDiffieHellmanNumbers != 0) {
@@ -79,16 +91,10 @@ public class ChatClientService {
 
     public void connect() {
         this.dhG = connectionHandler.connect(loginStructure);
-        companionsLogins.addAll(connectionHandler.registerChatRooms(login));
-        chatRoomHandler.createContexts();
     }
 
     public void disconnect() {
         connectionHandler.disconnect(loginStructure);
-    }
-
-    public void checkCompanionsStatuses() {
-        companionStatusesRepository.update(connectionHandler, login);
     }
 
     public boolean checkCompanionStatus(String companion) {
@@ -167,6 +173,7 @@ public class ChatClientService {
     }
 
     public void sendMessage(String companion, String message) {
+        // todo: byte array in message must not be > 2^13
         messageHandler.sendByteArray(login, companion, message.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -181,7 +188,7 @@ public class ChatClientService {
             return;
         }
 
-        for (MessageDto msg : response) {
+        for (var msg : response) {
             if (msg.getFileName().isEmpty()) {
                 // it is a byte arr (not file)
                 // if it is a text, print message to chat
@@ -192,6 +199,7 @@ public class ChatClientService {
             }
         }
     }
+
 
     private void processByteArrayMessage(MessageDto msg) {
         UUID id = msg.getMessageId();
@@ -211,6 +219,7 @@ public class ChatClientService {
 
         messageRepository.save(new MessageEntity(id, sender, msg.getFileName(), new String(decrypted), false));
     }
+
 
     private void processFileMessage(MessageDto msg) {
         // decrypt part to
@@ -254,4 +263,5 @@ public class ChatClientService {
             log.error("I/O error while writing to file {}: ", msg.getFileName(), e);
         }
     }
+
 }

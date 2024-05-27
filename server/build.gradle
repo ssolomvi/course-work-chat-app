@@ -36,9 +36,6 @@ dependencies {
     // docker
     implementation 'org.springframework.boot:spring-boot-docker-compose'
 
-    // kafka
-    implementation 'org.springframework.kafka:spring-kafka'
-
     // cryptography
     implementation project(path: ':cryptography-starter')
 
@@ -48,7 +45,6 @@ dependencies {
 
     // test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.springframework.kafka:spring-kafka-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

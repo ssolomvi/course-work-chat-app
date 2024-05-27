@@ -10,9 +10,7 @@ service ChatService {
     rpc Connect (Login) returns (ConnectResponse);
     rpc Disconnect (Login) returns (Status);
 
-    rpc RegisterChatRooms(ChatRoomLogins) returns (Status);
-
-    rpc CheckCompanionStatus (ChatRoomLogins) returns (CompanionAndStatus);
+    rpc CheckDisconnect(Login) returns (stream Login);
 
     /*  -------------------------------- INIT / DELETE CHAT ROOM -------------------------------- */
     rpc InitRoom (InitRoomRequest) returns (InitRoomResponse);
@@ -24,10 +22,6 @@ service ChatService {
     rpc DeleteRoom (ChatRoomLogins) returns (CompanionAndStatus);
     rpc CheckForDeletedRoom (Login) returns (stream CompanionAndStatus);
 
-    /*  -------------------------------- SENDING MESSAGES -------------------------------- */
-    rpc SendMessage (MessageToCompanion) returns (Status);
-
-    rpc AnyMessages (Login) returns (stream MessageToCompanion);
 }
 
 /*  -------------------------------- MESSAGES -------------------------------- */

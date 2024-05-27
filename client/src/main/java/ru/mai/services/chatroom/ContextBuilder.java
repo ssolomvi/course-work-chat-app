@@ -114,11 +114,11 @@ public class ContextBuilder {
                 yield new Rijndael(normalizedKey, (byte) 27, AlgorithmsConfigs.RIJNDAEL_BLOCK_LENGTH);
             }
             case ALGORITHM_RC6 -> {
-                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.RIJNDAEL_KEY_LENGTH);
+                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.RC6_KEY_LENGTH);
                 yield new RC6(normalizedKey);
             }
             case ALGORITHM_LOKI97 -> {
-                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.RIJNDAEL_KEY_LENGTH);
+                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.LOKI97_KEY_LENGTH);
                 yield new LOKI97(normalizedKey);
             }
             default -> {
@@ -141,11 +141,11 @@ public class ContextBuilder {
                 yield new Rijndael(normalizedKey, (byte) 27, AlgorithmsConfigs.RIJNDAEL_BLOCK_LENGTH);
             }
             case "RC6" -> {
-                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.RIJNDAEL_KEY_LENGTH);
+                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.RC6_KEY_LENGTH);
                 yield new RC6(normalizedKey);
             }
             case "LOKI97" -> {
-                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.RIJNDAEL_KEY_LENGTH);
+                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.LOKI97_KEY_LENGTH);
                 yield new LOKI97(normalizedKey);
             }
             default -> {
