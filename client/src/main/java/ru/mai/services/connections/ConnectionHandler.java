@@ -1,23 +1,19 @@
 package ru.mai.services.connections;
 
+import com.vaadin.flow.spring.annotation.SpringComponent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-import ru.mai.ChatRoomLogins;
 import ru.mai.ChatServiceGrpc;
 import ru.mai.EnumStatus;
 import ru.mai.Login;
-import ru.mai.db.repositories.ChatMetadataEntityRepository;
 
 import java.math.BigInteger;
-import java.util.LinkedList;
-import java.util.List;
 
 /**
  * Used for connecting / disconnecting from server with or without chat rooms
  */
 @Slf4j
-@Component
+@SpringComponent
 public class ConnectionHandler {
     private final ChatServiceGrpc.ChatServiceBlockingStub blockingStub;
 

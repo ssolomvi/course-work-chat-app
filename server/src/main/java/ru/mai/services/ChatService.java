@@ -39,7 +39,6 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
     @Override
     public void connect(Login request, StreamObserver<ConnectResponse> responseObserver) {
-        log.debug("{}: connected", request.getLogin());
         usersRep.putUser(request.getLogin());
 
         responseObserver.onNext(connectResponse);
@@ -52,19 +51,20 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
             log.debug("User {} is already offline / never been created", request.getLogin());
             responseObserver.onNext(Status.newBuilder().setEnumStatus(EnumStatus.ENUM_STATUS_ERROR).build());
             responseObserver.onCompleted();
+            return;
         }
         log.debug("{}: disconnected", request.getLogin());
         notifyDisconnectedRep.put(request.getLogin(), chatRep.getAllCompanions(request.getLogin()));
         usersRep.deleteUser(request.getLogin());
+
+        chatRep.removeIfDisconnected(request.getLogin());
         responseObserver.onNext(Status.newBuilder().setEnumStatus(EnumStatus.ENUM_STATUS_OK).build());
         responseObserver.onCompleted();
     }
 
-
-
     @Override
     public void checkDisconnect(Login request, StreamObserver<Login> responseObserver) {
-        List<String> disconnectedCompanions = notifyDisconnectedRep.contains(request.getLogin());
+        List<String> disconnectedCompanions = notifyDisconnectedRep.get(request.getLogin());
         if (!disconnectedCompanions.isEmpty()) {
             for (var companion : disconnectedCompanions) {
                 responseObserver.onNext(Login.newBuilder().setLogin(companion).build());
@@ -212,53 +212,4 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
 
         responseObserver.onCompleted();
     }
-
-    /*
-
-    @Override
-    public void sendMessage(MessageToCompanion request, StreamObserver<Status> responseObserver) {
-        if (usersRep.isActive(request.getCompanionLogin())) {
-            log.debug("Sending message {} to {}", request.getValue(), request.getCompanionLogin());
-            messageHandler.sendMessage(request.getCompanionLogin(),
-                    new MessageDto(UUID.fromString(request.getUuid()),
-                            request.getSender(), request.getFilename(),
-                            request.getPartitions(), request.getCurrIndex(),
-                            request.getValue().toByteArray()));
-        }
-        responseObserver.onNext(Status.newBuilder().setEnumStatus(EnumStatus.ENUM_STATUS_OK).build());
-        responseObserver.onCompleted();
-    }
-
-    @Override
-    public void anyMessages(Login request, StreamObserver<MessageToCompanion> responseObserver) {
-        var op = messageHandler.readMessages(request.getLogin());
-        if (op.isEmpty()) {
-            log.debug("No messages for {}", request.getLogin());
-            responseObserver.onNext(MessageToCompanion.getDefaultInstance());
-            responseObserver.onCompleted();
-            return;
-        }
-
-        var consumerRecords = op.get();
-
-        for (var consumerRecord : consumerRecords) {
-            String sender = consumerRecord.value().getSender();
-            log.debug("{} <- {}: got message: {}", request.getLogin(), sender, consumerRecord.value().getValue());
-
-            MessageDto dto = consumerRecord.value();
-
-            responseObserver.onNext(MessageToCompanion.newBuilder()
-                    .setCompanionLogin(sender)
-                    .setUuid(consumerRecord.value().getMessageId().toString())
-                    .setSender(sender)
-                    .setFilename(dto.getFileName())
-                    .setPartitions(dto.getNumberOfPartitions())
-                    .setCurrIndex(dto.getCurrIndex())
-                    .setValue(ByteString.copyFrom(dto.getValue()))
-                    .build()
-            );
-        }
-
-        responseObserver.onCompleted();
-    }*/
 }

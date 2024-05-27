@@ -23,6 +23,7 @@ public class ActiveUsersAndConsumersRepository {
         }
 
         activeUsers.add(user);
+        log.debug("{} is now online", user);
     }
 
     public void deleteUser(String user) {

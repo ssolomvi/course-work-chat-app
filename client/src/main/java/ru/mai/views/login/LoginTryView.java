@@ -1,6 +1,5 @@
 package ru.mai.views.login;
 
-import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -9,25 +8,28 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.RouteParam;
-import com.vaadin.flow.router.RouteParameters;
-import ru.mai.views.MainLayout;
+import lombok.extern.slf4j.Slf4j;
 import ru.mai.views.chatrooms.ChatroomsView;
 
-@PageTitle("Login")
-@Route(value = "login")
+@Slf4j
+@Route(value = "")
 public class LoginTryView extends VerticalLayout {
     public LoginTryView() {
         TextField login = new TextField("Login");
 
-        Button loginButton = new Button("Log in", event -> {
+        Button loginButton = new Button("Log in");
+
+        loginButton.addClickListener(event -> {
             String username = login.getValue();
 
             if (username.isEmpty()) {
                 Notification.show("Login cannot be empty").addThemeVariants(NotificationVariant.LUMO_ERROR);
             } else {
                 Notification.show("Log in successfully").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                UI.getCurrent().navigate(ChatroomsView.class, ChatroomsView.createParameter(username));
+                log.debug("UI is present? : {}", getUI().isPresent());
+                getUI().ifPresent(ui -> ui.navigate(ChatroomsView.class, username));
+//                getUI().ifPresent(ui -> ui.navigate(ChatroomsView.class, ChatroomsView.createParameter(username)));
+//                UI.getCurrent().navigate(ChatroomsView.class, ChatroomsView.createParameter(username));
 //                UI.getCurrent().navigate("chat/" + username);
 //                UI.getCurrent().navigate(username);
             }

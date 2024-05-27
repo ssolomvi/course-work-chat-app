@@ -1,6 +1,5 @@
 package ru.mai.views.chatrooms;
 
-import com.vaadin.collaborationengine.UserInfo;
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.UI;
@@ -12,6 +11,7 @@ import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.messages.MessageInput;
 import com.vaadin.flow.component.messages.MessageList;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.page.Page;
@@ -21,28 +21,42 @@ import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
-import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
+import com.vaadin.flow.component.upload.receivers.MultiFileMemoryBuffer;
 import com.vaadin.flow.router.*;
 import com.vaadin.flow.server.StreamResource;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import com.vaadin.flow.theme.lumo.LumoUtility.Padding;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import ru.mai.services.ChatClientService;
-import ru.mai.views.MainLayout;
+import ru.mai.utils.Pair;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @PageTitle("Chat-rooms")
-@Route(value = "chat", layout = MainLayout.class)
+@Route(value = "chat")
 public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<String> {
-    private String login = "dummy";
+    private final List<Pair<String, InputStream>> files = new LinkedList<>();
+    private final List<ChatInfo> chats = new CopyOnWriteArrayList<>();
+    private final ScheduledExecutorService scheduled = Executors.newSingleThreadScheduledExecutor();
+    private final ChatClientService chatClientService;
+    private final MessagesLayoutWrapper wrapper;
+    private String login;
+    private ChatInfo currentChat;
+    private Tabs tabs;
+    private static final int FILE_PAGE_SIZE = 65536;
+    private VerticalLayout chatContainer;
 
     public static String createParameter(String username) {
         return username;
@@ -52,8 +66,11 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
     public void setParameter(BeforeEvent event, @WildcardParameter String parameter) {
         Notification.show(String.format("Hello, %s!", parameter));
         this.login = parameter;
-
+        chatClientService.setLogin(login);
+        pingServer();
+        chatClientService.connect();
     }
+
 
     @Getter
     public static class ChatTab extends Tab {
@@ -65,27 +82,17 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
     }
 
+    @Getter
     public static class ChatInfo {
-        private final String name;
+        private final String companion;
 
         private ChatInfo(String name) {
-            this.name = name;
-        }
-
-        public String getCollaborationTopic() {
-            return "chat/" + name;
+            this.companion = name;
         }
     }
 
-//    private final ChatClientService clientService;
-
-    private final List<ChatInfo> chats = new CopyOnWriteArrayList<>();
-    private ChatInfo currentChat;
-    private Tabs tabs;
-
-    public ChatroomsView(RouteParameters routeParameters,   @Autowired ChatClientService clientService) {
-        this.login = routeParameters.get("chat").orElse("");
-        Notification.show(String.format("Hello, %s!", login));
+    public ChatroomsView(@Autowired ChatClientService chatClientService) {
+        this.chatClientService = chatClientService;
 
         // todo: путь (route) должен меняться при переключении на табу чата
         // т.е.: когда пользователь только заходит, путь страницы /login
@@ -94,66 +101,104 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         // при нескольких чатах появляется возможность выбирать чат.
         // В зависимости от открытого таба путь страницы превращается в /login/chatN
 
-//        this.clientService = clientService;
-//        this.clientService.setLogin(login); // todo:
-        // this.clientService.connect();
-
         addClassNames("chat-view", LumoUtility.Width.FULL, LumoUtility.Display.FLEX, LumoUtility.Flex.AUTO);
         setSpacing(false);
 
-        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        UserInfo userInfo = new UserInfo(userDetails.getUsername(), userDetails.getUsername());
-
-        // Layouting
-
-
-
-        // side panel
+        // Lay-outing
         Aside side = createAside();
-        VerticalLayout chatContainer = createChatContainer();
+        this.chatContainer = createChatContainer();
         add(chatContainer, side);
+        chatContainer.setVisible(false);
 
+        this.wrapper = new MessagesLayoutWrapper(chatContainer);
+    }
 
-//        Header header = createHeader();
+    private void pingServer() {
+        log.debug("{}: start pinging server", login);
+        scheduled.scheduleAtFixedRate(
+                () -> {
 
-//        side.add(header, tabs, buttonAddChatRoom);
+                    chatClientService.checkForInitRoomRequests();
 
-        // messages container
-        // upload files button
+                    chatClientService.checkForDeleteRoomRequest();
 
-
-        // Change the topic id of the chat when a new tab is selected
-
+                    if (chatClientService.getCheckForDiffieHellmanNumbers() != 0) {
+                        var newCompanions = chatClientService.checkForDiffieHellmanNumbers();
+                        var newChatTabs = newCompanions.stream().map(companion -> new ChatTab(new ChatInfo(companion))).toList();
+                        for (var newChatTab : newChatTabs) {
+                            tabs.add(newChatTab);
+                        }
+                    }
+                },
+                0, 5, TimeUnit.SECONDS
+        );
     }
 
     private VerticalLayout createChatContainer() {
-        VerticalLayout chatContainer = new VerticalLayout();
-//        chatContainer.addClassNames(LumoUtility.Flex.AUTO);
-        chatContainer.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.Overflow.HIDDEN);
+        VerticalLayout chatLayout = new VerticalLayout();
+        chatLayout.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.Overflow.HIDDEN);
 
         MessageList list = new MessageList();
         list.setSizeFull();
 
-        MessageInput input = new MessageInput();
-        input.setWidthFull();
-
-        Upload dropDisabledSingleFileUpload = createUpload();
-
-        HorizontalLayout msgInputBtnAddFileContainer = new HorizontalLayout();
-        msgInputBtnAddFileContainer.setMaxWidth(chatContainer.getWidth());
-        msgInputBtnAddFileContainer.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.FlexDirection.ROW, LumoUtility.Width.AUTO, LumoUtility.AlignItems.CENTER, Padding.SMALL);
-
-        msgInputBtnAddFileContainer.add(dropDisabledSingleFileUpload, input);
+        var msgInputBtnAddFileContainer = createMessageContainer();
 
         // todo: add interrupt encryption
         ProgressBar progressBar = new ProgressBar(0, 1, 0);
 
-        chatContainer.add(list, msgInputBtnAddFileContainer, progressBar);
+        chatLayout.add(list, msgInputBtnAddFileContainer, progressBar);
 
         setSizeFull();
         expand(list);
 
-        return chatContainer;
+        return chatLayout;
+    }
+
+    private HorizontalLayout createMessageContainer() {
+        HorizontalLayout messageLayout = new HorizontalLayout();
+        messageLayout.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.FlexDirection.ROW, LumoUtility.Width.AUTO, LumoUtility.AlignItems.CENTER, Padding.SMALL);
+
+        Upload dropDisabledSingleFileUpload = createUpload();
+
+        MessageInput input = new MessageInput();
+        input.addSubmitListener(event -> {
+            // нажали на кнопку отправить
+            sendMessage(dropDisabledSingleFileUpload);
+
+            String message = event.getValue();
+            if (message.length() > FILE_PAGE_SIZE) {
+                Notification.show(String.format("Message is too long, it must not be more than %d bytes.", FILE_PAGE_SIZE)).addThemeVariants(NotificationVariant.LUMO_WARNING);
+            }
+            chatClientService.sendMessage(currentChat.companion, event.getValue());
+            wrapper.showTextMessage(event.getValue(), MessagesLayoutWrapper.Destination.OWN);
+        });
+
+        input.setWidthFull();
+
+
+        messageLayout.add(dropDisabledSingleFileUpload, input);
+        return messageLayout;
+    }
+
+    private void sendMessage(Upload upload) {
+        try {
+            String companion = currentChat.getCompanion();
+            for (var file : files) {
+                String fileName = file.getKey();
+                chatClientService.sendFile(companion, file.getKey(), file.getValue());
+
+                if (fileName.endsWith(".jpg") || fileName.endsWith(".png") || fileName.endsWith(".jpeg")) {
+                    wrapper.showImageMessage(fileName, file.getValue().readAllBytes(), MessagesLayoutWrapper.Destination.OWN);
+                } else {
+                    wrapper.showFileMessage(fileName, file.getValue().readAllBytes(), MessagesLayoutWrapper.Destination.OWN);
+                }
+            }
+            upload.clearFileList();
+            files.clear();
+        } catch (IOException | RuntimeException e) {
+            // runtime exception is thrown if encryption context not found
+            log.error("I/O exception happened trying to send file, ", e);
+        }
     }
 
     private Aside createAside() {
@@ -167,8 +212,7 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
                 currentChat = ((ChatTab) event.getSelectedTab()).getChatInfo();
             } else {
                 currentChat = null;
-//                msgInputBtnAddFileContainer.setVisible(false);
-//                progressBar.setVisible(false);
+                this.chatContainer.setVisible(false);
             }
         });
 
@@ -185,7 +229,7 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
             ChatTab tab = new ChatTab(chat);
             tab.addClassNames(LumoUtility.JustifyContent.BETWEEN);
 
-            tab.add(new Span("# " + chat.name));
+            tab.add(new Span("# " + chat.companion));
 
             Button buttonCloseTab = new Button(new Icon("lumo", "cross"),
                     e -> {
@@ -193,6 +237,8 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
                         int countOfChildrenTabs = tabs.getComponentCount();
                         if (countOfChildrenTabs != 0) {
                             tabs.setSelectedIndex(0);
+                        } else {
+                            this.chatContainer.setVisible(false);
                         }
                     });
             buttonCloseTab.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
@@ -204,27 +250,18 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         return tabs;
     }
 
-    private void setMsgInputContainerAndProgressBarVisible(HorizontalLayout msgInputBtnAddFileContainer, ProgressBar progressBar, boolean isVisible) {
-        msgInputBtnAddFileContainer.setVisible(isVisible);
-        progressBar.setVisible(isVisible);
-
-    }
-
     private Upload createUpload() {
-        MemoryBuffer bufferAddFile = new MemoryBuffer();
-        Upload upload = new Upload(bufferAddFile);
+        MultiFileMemoryBuffer multiFileMemoryBuffer = new MultiFileMemoryBuffer();
+        Upload upload = new Upload(multiFileMemoryBuffer);
 
         upload.setDropAllowed(false);
 
         upload.addSucceededListener(event -> {
             // Get information about the uploaded file
-            InputStream fileData = bufferAddFile.getInputStream();
             String fileName = event.getFileName();
-            long contentLength = event.getContentLength();
-            String mimeType = event.getMIMEType();
 
+            files.add(new Pair<>(fileName, multiFileMemoryBuffer.getInputStream(fileName)));
             // Do something with the file data
-            // processFile(fileData, fileName, contentLength, mimeType);
         });
 
         return upload;
@@ -232,9 +269,9 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
     private Dialog createDialog() {
         Dialog dialog = new Dialog();
-        dialog.getElement().setAttribute("aria-label", "Add note");
+        dialog.getElement().setAttribute("aria-label", "Add chat room");
 
-        VerticalLayout dialogLayout = createDialogLayout();
+        VerticalLayout dialogLayout = createDialogLayout(dialog);
         dialog.add(dialogLayout);
         dialog.setHeaderTitle("Add chat room");
 
@@ -248,16 +285,13 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
     private Button createButtonAddChatRoom(Dialog dialogAddChatRoom) {
         Button btn = new Button("Add chat room", e -> dialogAddChatRoom.open());
         btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        btn.addClickListener(clickEvent -> {
-
-        });
 
         return btn;
     }
 
-    private VerticalLayout createDialogLayout() {
-        TextField loginField = new TextField("Login", "",
-                "User's login");
+    private VerticalLayout createDialogLayout(Dialog dialog) {
+        TextField loginField = new TextField("Companion's login", "",
+                "Companion's login");
         loginField.getStyle().set("padding-top", "0");
 
         Select<String> selectEncryptionMode = new Select<>();
@@ -275,7 +309,19 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         selectAlgorithm.setItems("LOKI97", "MARS", "RC6", "DES", "DEAL", "Rijndael", "RSA");
         selectAlgorithm.setValue("LOKI97");
 
-        Button submit = new Button("Submit");
+        Button submit = new Button("Submit", e -> {
+            String companion = loginField.getValue();
+            if (companion.isEmpty()) {
+                Notification.show("Companion's login field is empty!").addThemeVariants(NotificationVariant.LUMO_WARNING);
+                return;
+            }
+            if (chatClientService.addRoom(companion, selectAlgorithm.getValue(), selectEncryptionMode.getValue(), selectPaddingMode.getValue())) {
+                Notification.show(String.format("Chat room with %s was initiated!", companion)).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                dialog.close();
+            } else {
+                Notification.show(String.format("Chat room has not been created, 'cause %s is offline or already sent u a request", companion), 10000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_WARNING);
+            }
+        });
         submit.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
         VerticalLayout fieldLayout = new VerticalLayout(loginField, selectEncryptionMode, selectPaddingMode, selectAlgorithm, submit);
@@ -296,7 +342,8 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
     @Override
     protected void onDetach(DetachEvent detachEvent) {
-//        clientService.disconnect();
+        chatClientService.disconnect();
+        scheduled.shutdownNow();
     }
 
     private void setMobile(boolean mobile) {

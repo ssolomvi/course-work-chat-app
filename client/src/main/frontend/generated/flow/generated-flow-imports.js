@@ -51,8 +51,6 @@ import '@vaadin/icon/src/vaadin-icon.js';
 import '@vaadin/icons/vaadin-iconset.js';
 import '@vaadin/list-box/src/vaadin-list-box.js';
 import '@vaadin/item/src/vaadin-item.js';
-import '@vaadin/login/src/vaadin-login-form.js';
-import '@vaadin/login/src/vaadin-login-overlay.js';
 import '@vaadin/map/src/vaadin-map.js';
 import 'Frontend/generated/jar-resources/vaadin-map/mapConnector.js';
 import 'Frontend/generated/jar-resources/menubarConnector.js';

@@ -19,12 +19,13 @@ public class NotifyDisconnectedUsersRepository {
         return notifyAbout.containsKey(user);
     }
 
-    public List<String> contains(String userToNotify) {
-        List<String> toNotifyAbout=  new LinkedList<>();
+    public List<String> get(String userToNotify) {
+        List<String> toNotifyAbout = new LinkedList<>();
 
         for (var tmp : notifyAbout.entrySet()) {
             if (tmp.getValue().contains(userToNotify)) {
                 toNotifyAbout.add(tmp.getKey());
+                notifyAbout.remove(userToNotify);
             }
         }
         return toNotifyAbout;

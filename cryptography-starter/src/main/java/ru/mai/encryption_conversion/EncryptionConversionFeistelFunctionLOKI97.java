@@ -15,8 +15,8 @@ import static ru.mai.utils.Operations.IndexingRule.FROM_MOST_TO_LEAST_START_WITH
 public class EncryptionConversionFeistelFunctionLOKI97 implements EncryptionConversion {
     static final Logger log = LoggerFactory.getLogger(EncryptionConversionFeistelFunctionLOKI97.class);
     private static final Operations.IndexingRule indexRule = FROM_MOST_TO_LEAST_START_WITH_0;
-    private static final String fileNameS1 = "src/test/resources/LOKI97/S1.txt";
-    private static final String fileNameS2 = "src/test/resources/LOKI97/S2.txt";
+    private static final String FILE_NAME_S_1 = Path.of("cryptography-starter", "src", "main", "resources", "LOKI97", "S1.txt").toString();
+    private static final String FILE_NAME_S_2 = Path.of("cryptography-starter", "src", "main", "resources", "LOKI97", "S2.txt").toString();
     boolean isInitiated = false;
     private static final byte[] S1 = new byte[0x1FFF + 1];
     private static final byte[] S2 = new byte[0x7FF + 1];
@@ -46,18 +46,19 @@ public class EncryptionConversionFeistelFunctionLOKI97 implements EncryptionConv
     };
 
     private void initSBoxes() throws IOException {
-        Path pathS1 = Paths.get(fileNameS1);
-        Path pathS2 = Paths.get(fileNameS2);
+        log.debug("Working Directory = " + System.getProperty("user.dir"));
+        Path pathS1 = Paths.get(FILE_NAME_S_1);
+        Path pathS2 = Paths.get(FILE_NAME_S_2);
 
         if (!isInitiated) { // try to read S1 and S2 tables from files
-            try (Scanner ScannerS1 = new Scanner(pathS1)) {
-                try (Scanner ScannerS2 = new Scanner(pathS2)) {
+            try (Scanner scannerS1 = new Scanner(pathS1)) {
+                try (Scanner scannerS2 = new Scanner(pathS2)) {
                     for (int i = 0; i < S1.length; i++) {
-                        S1[i] = ScannerS1.nextByte();
+                        S1[i] = scannerS1.nextByte();
                     }
 
                     for (int i = 0; i < S2.length; i++) {
-                        S2[i] = ScannerS2.nextByte();
+                        S2[i] = scannerS2.nextByte();
                     }
                 }
             }
@@ -67,7 +68,7 @@ public class EncryptionConversionFeistelFunctionLOKI97 implements EncryptionConv
                 pVal = 0L;
                 // for each input bit permute to specified output position
                 for (int j = 0, k = 7; j < 8; j++, k += 8)
-                    pVal |= (long)((i >>> j) & 0x1) << k;
+                    pVal |= (long) ((i >>> j) & 0x1) << k;
                 P[i] = pVal;
             }
 
@@ -132,13 +133,13 @@ public class EncryptionConversionFeistelFunctionLOKI97 implements EncryptionConv
     private byte[] P(byte[] input) {
         return Operations.longToBytes(
                 P[input[0] & 0xFF] >>> 7 |
-                P[input[1] & 0xFF] >>> 6 |
-                P[input[2] & 0xFF] >>> 5 |
-                P[input[3] & 0xFF] >>> 4 |
-                P[input[4] & 0xFF] >>> 3 |
-                P[input[5] & 0xFF] >>> 2 |
-                P[input[6] & 0xFF] >>> 1 |
-                P[input[7] & 0xFF]);
+                        P[input[1] & 0xFF] >>> 6 |
+                        P[input[2] & 0xFF] >>> 5 |
+                        P[input[3] & 0xFF] >>> 4 |
+                        P[input[4] & 0xFF] >>> 3 |
+                        P[input[5] & 0xFF] >>> 2 |
+                        P[input[6] & 0xFF] >>> 1 |
+                        P[input[7] & 0xFF]);
     }
 
     private byte[] Sb(byte[] input, byte[] roundKey) {
@@ -146,36 +147,16 @@ public class EncryptionConversionFeistelFunctionLOKI97 implements EncryptionConv
         long roundKeyLong = Operations.bytesArrToLong(roundKey);
 
         long f =
-                (S2[(int)(((inputLong>>>56) & 0xFF) | ((roundKeyLong>>>53) &  0x700))] & 0xFFL) << 56 |
-                        (S2[(int)(((inputLong>>>48) & 0xFF) | ((roundKeyLong>>>50) &  0x700))] & 0xFFL) << 48 |
-                        (S1[(int)(((inputLong>>>40) & 0xFF) | ((roundKeyLong>>>45) & 0x1F00))] & 0xFFL) << 40 |
-                        (S1[(int)(((inputLong>>>32) & 0xFF) | ((roundKeyLong>>>40) & 0x1F00))] & 0xFFL) << 32 |
-                        (S2[(int)(((inputLong>>>24) & 0xFF) | ((roundKeyLong>>>37) &  0x700))] & 0xFFL) << 24 |
-                        (S2[(int)(((inputLong>>>16) & 0xFF) | ((roundKeyLong>>>34) &  0x700))] & 0xFFL) << 16 |
-                        (S1[(int)(((inputLong>>> 8) & 0xFF) | ((roundKeyLong>>>29) & 0x1F00))] & 0xFFL) <<  8 |
-                        (S1[(int)(( inputLong       & 0xFF) | ((roundKeyLong>>>24) & 0x1F00))] & 0xFFL);
+                (S2[(int) (((inputLong >>> 56) & 0xFF) | ((roundKeyLong >>> 53) & 0x700))] & 0xFFL) << 56 |
+                        (S2[(int) (((inputLong >>> 48) & 0xFF) | ((roundKeyLong >>> 50) & 0x700))] & 0xFFL) << 48 |
+                        (S1[(int) (((inputLong >>> 40) & 0xFF) | ((roundKeyLong >>> 45) & 0x1F00))] & 0xFFL) << 40 |
+                        (S1[(int) (((inputLong >>> 32) & 0xFF) | ((roundKeyLong >>> 40) & 0x1F00))] & 0xFFL) << 32 |
+                        (S2[(int) (((inputLong >>> 24) & 0xFF) | ((roundKeyLong >>> 37) & 0x700))] & 0xFFL) << 24 |
+                        (S2[(int) (((inputLong >>> 16) & 0xFF) | ((roundKeyLong >>> 34) & 0x700))] & 0xFFL) << 16 |
+                        (S1[(int) (((inputLong >>> 8) & 0xFF) | ((roundKeyLong >>> 29) & 0x1F00))] & 0xFFL) << 8 |
+                        (S1[(int) ((inputLong & 0xFF) | ((roundKeyLong >>> 24) & 0x1F00))] & 0xFFL);
 
         return Operations.longToBytes(f);
-//        int idx0 = ((((expanded[0] & 0xff) << 8) | (expanded[1] & 0xe0)) >>> 5);
-//        int idx1 = ((((expanded[1] & 0x1f) << 8) | (expanded[2] & 0xfc)) >>> 2);
-//        int idx2 = ((((expanded[2] & 0x03) << 16) | ((expanded[3] & 0xff) << 8) | (expanded[4] & 0xe0)) >>> 5);
-//        int idx3 = ((expanded[4] & 0x1f) << 8) | (expanded[5] & 0xff);
-//        int idx4 = ((((expanded[6] & 0xff) << 8) | (expanded[7] & 0xe0)) >>> 5);
-//        int idx5 = ((((expanded[7] & 0x1f) << 8) | (expanded[8] & 0xfc)) >>> 2);
-//        int idx6 = ((((expanded[8] & 0x03) << 16) | ((expanded[9] & 0xff) << 8) | (expanded[10] & 0xe0)) >>> 5);
-//        int idx7 = ((expanded[10] & 0x1f) << 8) | (expanded[11] & 0xff);
-
-//        byte[] result = new byte[8];
-//        result[0] = S2[idx0];
-//        result[1] = S2[idx1];
-//        result[2] = S1[idx2];
-//        result[3] = S1[idx3];
-//        result[4] = S2[idx4];
-//        result[5] = S2[idx5];
-//        result[6] = S1[idx6];
-//        result[7] = S1[idx7];
-
-//        return result;
     }
 
     // input = 8 bytes

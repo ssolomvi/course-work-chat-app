@@ -24,8 +24,10 @@ public class InitMetadataRepository {
     public Optional<Pair<InitRoomResponse, BigInteger>> get(String companion) {
         var op = Optional.ofNullable(metadata.get(companion));
 
-        metadata.remove(companion);
-
         return op;
+    }
+
+    public void remove(String companion) {
+        metadata.remove(companion);
     }
 }

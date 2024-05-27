@@ -35,7 +35,7 @@ public class MessageHandler {
         var op = contextsRepository.get(companion);
         if (op.isEmpty()) {
             log.debug("Context for {} not found", companion);
-            return;
+            throw new RuntimeException(String.format("Context for companion %s not found", companion));
         }
 
         var context = op.get();
@@ -53,6 +53,14 @@ public class MessageHandler {
     }
 
     public void sendFile(String own, String companion, InputStream inputStream, String fileName) {
+        var op = contextsRepository.get(companion);
+        if (op.isEmpty()) {
+            log.debug("Context for {} not found", companion);
+            throw new RuntimeException(String.format("Context for companion %s not found", companion));
+        }
+
+        var context = op.get();
+
         int readBytes;
 
         try {
@@ -67,14 +75,6 @@ public class MessageHandler {
             } else {
                 arr = new byte[FILE_PAGE_SIZE];
             }
-
-            var op = contextsRepository.get(companion);
-            if (op.isEmpty()) {
-                log.debug("Context for {} not found", companion);
-                return;
-            }
-
-            var context = op.get();
 
             UUID id = UUID.randomUUID();
 

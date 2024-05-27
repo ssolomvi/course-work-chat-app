@@ -90,7 +90,7 @@ public class CustomPair<D> implements Serializable {
             if (key.equals(pair.key)) {
                 return value.equals(pair.value);
             } else if (key.equals(pair.value)) {
-                return key.equals(pair.key);
+                return value.equals(pair.key);
             }
         }
         return false;

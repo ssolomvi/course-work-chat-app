@@ -28,6 +28,10 @@ public class ContextsRepository {
         put(companion, context);
     }
 
+    public boolean contains(String companion) {
+        return contexts.containsKey(companion);
+    }
+
     public Optional<EncryptionContext> get(String companion) {
         return Optional.ofNullable(contexts.get(companion));
     }

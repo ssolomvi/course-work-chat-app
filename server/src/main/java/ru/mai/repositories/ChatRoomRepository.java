@@ -20,7 +20,7 @@ public class ChatRoomRepository {
             return false;
         }
         if (chatRooms.contains(new CustomPair<>(c1, c2))) {
-            log.debug("Can't create a chat room twice: {} <-> {}", c1, c2);
+            log.debug("Chat room {} <-> {} has already been created", c1, c2);
             return false;
         }
         chatRooms.add(new CustomPair<>(c1, c2));
@@ -29,6 +29,15 @@ public class ChatRoomRepository {
 
     public void remove(String c1, String c2) {
         chatRooms.remove(new CustomPair<>(c1, c2));
+    }
+
+    // invoked if user disconnects from server, 'cause we treat connected after disconnection user as newly created
+    public void removeIfDisconnected(String login) {
+        chatRooms.removeIf(pair ->
+        {
+            log.debug("Deleting chat room {} <-> {}, 'cause {} disconnected", pair.getKey(), pair.getValue(), login);
+            return pair.getKey().equals(login) || pair.getValue().equals(login);
+        });
     }
 
     public boolean contains(String c1, String c2) {

@@ -50,6 +50,9 @@ public class ChatRoomHandler {
      * @return Returns {@code true} if room was created, {@code false} if companion is offline or already sent a request
      */
     public boolean initRoom(String own, String companion, String algorithm, String encryptionMode, String paddingMode) {
+        if (own.equals(companion)) {
+            return false;
+        }
         InitRoomRequest request = InitRoomRequest.newBuilder()
                 .setOwnLogin(own)
                 .setCompanionLogin(companion)
@@ -123,9 +126,9 @@ public class ChatRoomHandler {
                     .setCompanionLogin(companion)
                     .setNumber(majorNumber)
                     .build()).getEnumStatus().equals(EnumStatus.ENUM_STATUS_OK)) {
-                log.debug("{} -> {}: Passed diffie-hellman number: {}", own, metadata.getKey(), majorNumber);
+                log.debug("{} -> {}: Passed diffie-hellman number: {}", own, metadata.getKey().getCompanionLogin(), majorNumber);
             } else {
-                log.debug("{} -> {}: Error passing diffie-hellman number", own, metadata.getKey());
+                log.debug("{} -> {}: Error passing diffie-hellman number", own, metadata.getKey().getCompanionLogin());
             }
         } catch (StatusRuntimeException e) {
             log.error("{}: passDiffieHellmanNumber: Error happened, cause: ", own, e);
@@ -163,6 +166,7 @@ public class ChatRoomHandler {
             }
 
             Pair<InitRoomResponse, BigInteger> metadata = op.get(); // metadata for encryption context creation and minor number
+            metadataRepository.remove(companionNumber.getCompanionLogin());
 
             EncryptionModeEnum encryptionMode = ContextBuilder.getEncryptionModeEnum(metadata.getKey().getEncryptionMode());
             PaddingModeEnum paddingMode = ContextBuilder.getPaddingModeEnum(metadata.getKey().getPaddingMode());
