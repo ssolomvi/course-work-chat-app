@@ -107,8 +107,12 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         // Lay-outing
         Aside side = createAside();
         this.chatContainer = createChatContainer();
-        add(chatContainer, side);
+        add(side, chatContainer);
         chatContainer.setVisible(false);
+        // todo: set disable?
+        // if at least on chat room is created, set disable = false
+        // differ message list depending on current chat room
+        // TODO: MESSAGING!!!
 
         this.wrapper = new MessagesLayoutWrapper(chatContainer);
     }
@@ -124,9 +128,29 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
                     if (chatClientService.getCheckForDiffieHellmanNumbers() != 0) {
                         var newCompanions = chatClientService.checkForDiffieHellmanNumbers();
-                        var newChatTabs = newCompanions.stream().map(companion -> new ChatTab(new ChatInfo(companion))).toList();
+                        var newChatTabs = newCompanions.stream().map(companion -> {
+                            var newChatTab = new ChatTab(new ChatInfo(companion));
+
+                            newChatTab.add(new Span("# " + newChatTab.getChatInfo().getCompanion()));
+
+                            Button buttonCloseTab = new Button(new Icon("lumo", "cross"), e -> {
+                                tabs.remove(newChatTab);
+                                int countOfChildrenTabs = tabs.getComponentCount();
+                                if (countOfChildrenTabs != 0) {
+                                    tabs.setSelectedIndex(0);
+                                }
+                            });
+
+                            buttonCloseTab.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+                            newChatTab.add(buttonCloseTab);
+
+                            return newChatTab;
+                        }).toList();
+
                         for (var newChatTab : newChatTabs) {
-                            tabs.add(newChatTab);
+                            getUI().ifPresent(ui -> ui.access(() -> tabs.add(newChatTab)));
+                            currentChat = newChatTab.chatInfo;
+                            log.debug("Added chat tab with companion: " + newChatTab.getChatInfo().getCompanion());
                         }
                     }
                 },
@@ -203,7 +227,8 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
     private Aside createAside() {
         Aside side = new Aside();
-        side.addClassNames(LumoUtility.Display.FLEX, LumoUtility.FlexDirection.COLUMN, LumoUtility.Flex.GROW_NONE, LumoUtility.Flex.SHRINK_NONE, LumoUtility.Background.CONTRAST_5);
+        side.addClassNames(LumoUtility.Display.FLEX, LumoUtility.FlexDirection.COLUMN, LumoUtility.Flex.GROW_NONE,
+                LumoUtility.Flex.SHRINK_NONE, LumoUtility.Background.CONTRAST_5, LumoUtility.AlignItems.END);
         side.setWidth("18rem");
 
         tabs = createTabs(chats);
@@ -311,8 +336,12 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
         Button submit = new Button("Submit", e -> {
             String companion = loginField.getValue();
+            if (companion.equals(login)) {
+                Notification.show("You cannot create chat room with yourself, sorry", 5000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_WARNING);
+            }
+
             if (companion.isEmpty()) {
-                Notification.show("Companion's login field is empty!").addThemeVariants(NotificationVariant.LUMO_WARNING);
+                Notification.show("Companion's login field is empty!", 3000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_WARNING);
                 return;
             }
             if (chatClientService.addRoom(companion, selectAlgorithm.getValue(), selectEncryptionMode.getValue(), selectPaddingMode.getValue())) {

@@ -26,12 +26,7 @@ public class LoginTryView extends VerticalLayout {
                 Notification.show("Login cannot be empty").addThemeVariants(NotificationVariant.LUMO_ERROR);
             } else {
                 Notification.show("Log in successfully").addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                log.debug("UI is present? : {}", getUI().isPresent());
                 getUI().ifPresent(ui -> ui.navigate(ChatroomsView.class, username));
-//                getUI().ifPresent(ui -> ui.navigate(ChatroomsView.class, ChatroomsView.createParameter(username)));
-//                UI.getCurrent().navigate(ChatroomsView.class, ChatroomsView.createParameter(username));
-//                UI.getCurrent().navigate("chat/" + username);
-//                UI.getCurrent().navigate(username);
             }
         });
 

@@ -46,7 +46,6 @@ public class EncryptionConversionFeistelFunctionLOKI97 implements EncryptionConv
     };
 
     private void initSBoxes() throws IOException {
-        log.debug("Working Directory = " + System.getProperty("user.dir"));
         Path pathS1 = Paths.get(FILE_NAME_S_1);
         Path pathS2 = Paths.get(FILE_NAME_S_2);
 

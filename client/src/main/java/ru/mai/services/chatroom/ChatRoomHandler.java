@@ -135,20 +135,20 @@ public class ChatRoomHandler {
         }
     }
 
-    public Map<String, EncryptionContext> anyDiffieHellmanNumbers(Login login) {
+    public Set<String> anyDiffieHellmanNumbers(Login login) {
         Iterator<DiffieHellmanNumber> numbers;
         try {
             numbers = blockingStub.anyDiffieHellmanNumber(login);
         } catch (StatusRuntimeException e) {
             log.debug("{}: anyDiffieHellmanNumbers: Error occurred, cause:, ", login.getLogin(), e);
-            return Collections.emptyMap();
+            return Collections.emptySet();
         }
 
         if (!numbers.hasNext()) {
-            return Collections.emptyMap();
+            return Collections.emptySet();
         }
 
-        final Map<String, EncryptionContext> companionContexts = new HashMap<>();
+        final Set<String> newCompanions = new HashSet<>();
         final DiffieHellmanNumber dummy = DiffieHellmanNumber.getDefaultInstance();
 
         while (numbers.hasNext()) {
@@ -185,11 +185,12 @@ public class ChatRoomHandler {
             var context = ContextBuilder.createEncryptionContext(encryptionMode, paddingMode, algorithm, initVector, key);
 
             contextsRepository.put(companionNumber.getCompanionLogin(), context);
+            newCompanions.add(companionNumber.getCompanionLogin());
 
             log.debug("{} -> {}: created context", login.getLogin(), companionNumber.getCompanionLogin());
         }
 
-        return companionContexts;
+        return newCompanions;
     }
 
     public boolean deleteRoom(String own, String companion) {
