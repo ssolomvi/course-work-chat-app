@@ -67,8 +67,11 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
         List<String> disconnectedCompanions = notifyDisconnectedRep.get(request.getLogin());
         if (!disconnectedCompanions.isEmpty()) {
             for (var companion : disconnectedCompanions) {
+                notifyDisconnectedRep.remove(companion, request.getLogin());
                 responseObserver.onNext(Login.newBuilder().setLogin(companion).build());
             }
+        } else {
+            responseObserver.onNext(Login.getDefaultInstance());
         }
         responseObserver.onCompleted();
     }

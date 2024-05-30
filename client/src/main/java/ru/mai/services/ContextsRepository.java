@@ -1,5 +1,6 @@
 package ru.mai.services;
 
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Repository;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.services.chatroom.ContextBuilder;
@@ -9,6 +10,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
+@Scope("prototype")
 public class ContextsRepository {
     /**
      * Encryption context for communication with key=companion
@@ -40,4 +42,7 @@ public class ContextsRepository {
         contexts.remove(companion);
     }
 
+    public void clear() {
+        contexts.clear();
+    }
 }

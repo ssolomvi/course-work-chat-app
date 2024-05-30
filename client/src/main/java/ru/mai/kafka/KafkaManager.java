@@ -43,7 +43,7 @@ public class KafkaManager {
     }
 
 
-    public static KafkaConsumer<String, MessageDto> createKafkaConsumer(String topic) {
+    public static KafkaConsumer<String, MessageDto> createKafkaConsumer(String login) {
         KafkaConsumer<String, MessageDto> consumer = new KafkaConsumer<>(
                 Map.of(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS,
                         ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID_CONFIG,
@@ -52,7 +52,9 @@ public class KafkaManager {
                 new MessageDtoDeserializer()
         );
 
+        String topic = getTopicName(login);
         consumer.subscribe(Collections.singleton(topic));
+        log.debug("Start listening to topic {}", topic);
         return consumer;
     }
 

@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Repository
 public class NotifyDisconnectedUsersRepository {
+    // key disconnected, value to notify about
     private final Map<String, List<String>> notifyAbout = new ConcurrentHashMap<>();
 
     public void put(String user, List<String> users) {
@@ -37,6 +38,8 @@ public class NotifyDisconnectedUsersRepository {
             toNotify.remove(userToNotify);
             if (toNotify.isEmpty()) {
                 notifyAbout.remove(companion);
+            } else {
+                notifyAbout.put(companion, toNotify);
             }
         }
     }
