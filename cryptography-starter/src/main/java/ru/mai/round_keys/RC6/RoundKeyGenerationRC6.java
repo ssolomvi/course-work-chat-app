@@ -56,8 +56,9 @@ public class RoundKeyGenerationRC6 implements RoundKeyGeneration {
             A = Operations.bytesArrToInt(S[i]);
 
             L[j] = Operations.intToBytes(
-                    Operations.cyclicShiftLeftInt(Operations.bytesArrToInt(L[j]) + A + B,
-                    A + B)
+                    Operations.cyclicShiftLeftInt(
+                            Operations.bytesArrToInt(L[j]) + A + B,
+                            A + B)
             );
             B = Operations.bytesArrToInt(L[j]);
 //            L[j] = Operations.cyclicShiftLeft(
