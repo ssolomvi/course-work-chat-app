@@ -108,8 +108,7 @@ public class ChatClientService {
         if (!response.isEmpty()) {
             checkForDiffieHellmanNumbers -= response.size();
 
-            contextsRepository.put(response);
-            newCompanions.addAll(response.keySet());
+            newCompanions.addAll(response);
             // todo: make a new chat rooms (ui)
         }
         return newCompanions;
