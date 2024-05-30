@@ -4,10 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mai.encryption_algorithm.EncryptionAlgorithm;
-import ru.mai.encryption_algorithm.impl.DEAL;
-import ru.mai.encryption_algorithm.impl.DES;
-import ru.mai.encryption_algorithm.impl.LOKI97;
-import ru.mai.encryption_algorithm.impl.Rijndael;
+import ru.mai.encryption_algorithm.impl.*;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.encryption_context.SymmetricEncryptionContextImpl;
 import ru.mai.encryption_mode.EncryptionMode;
@@ -108,7 +105,7 @@ public class EncryptionDecryptionTests {
         byte[] key32 = "veryVeryVeryVeryVerSecureKeyYeah".getBytes(StandardCharsets.UTF_8);
 
         // init algorithm
-        int countAlgorithmsVariations = 7;
+        int countAlgorithmsVariations = 8;
         EncryptionAlgorithm[] algorithms = new EncryptionAlgorithm[countAlgorithmsVariations];
         algorithms[0] = new DES(keyDES);
         algorithms[1] = new DEAL(key16);
@@ -117,6 +114,7 @@ public class EncryptionDecryptionTests {
         algorithms[4] = new LOKI97(key16);
         algorithms[5] = new LOKI97(key24);
         algorithms[6] = new LOKI97(key32);
+        algorithms[7] = new RC6(key16);
 
         // init initVector
         byte[] initVector8 = "initVect".getBytes(StandardCharsets.UTF_8);
@@ -155,7 +153,7 @@ public class EncryptionDecryptionTests {
         byte[] key32 = "veryVeryVeryVeryVerSecureKeyYeah".getBytes(StandardCharsets.UTF_8);
 
         // init algorithm
-        int countAlgorithmsVariations = 7;
+        int countAlgorithmsVariations = 8;
         EncryptionAlgorithm[] algorithms = new EncryptionAlgorithm[countAlgorithmsVariations];
         algorithms[0] = new DES(keyDES);
         algorithms[1] = new DEAL(key16);
@@ -164,6 +162,7 @@ public class EncryptionDecryptionTests {
         algorithms[4] = new LOKI97(key16);
         algorithms[5] = new LOKI97(key24);
         algorithms[6] = new LOKI97(key32);
+        algorithms[7] = new RC6(key16);
 
         // init initVector
         byte[] initVector8 = "initVect".getBytes(StandardCharsets.UTF_8);

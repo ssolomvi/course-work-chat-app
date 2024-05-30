@@ -87,26 +87,30 @@ public class FeistelCipherRC6 {
             ));
 
             A = Operations.additionByteArraysLength4(
-                    Operations.cyclicShiftLeft(
-                            Operations.xor(
-                                    A,
-                                    t
-                            ),
+                    Operations.intToBytes(
+                            Operations.cyclicShiftLeftInt(
+                                    Operations.bytesArrToInt(
+                                            Operations.xor(
+                                                    A,
+                                                    t
+                                            )),
 //                            u[3] & 0xff & ~(~0 << log2w)
-                            Operations.bytesArrToInt(u)
-                    ),
+                                    Operations.bytesArrToInt(u)
+                            )),
                     roundKeys[2 * i]
             );
 
             C = Operations.additionByteArraysLength4(
-                    Operations.cyclicShiftLeft(
-                            Operations.xor(
-                                    C,
-                                    u
-                            ),
+                    Operations.intToBytes(
+                            Operations.cyclicShiftLeftInt(
+                                    Operations.bytesArrToInt(
+                                            Operations.xor(
+                                                    C,
+                                                    u
+                                            )),
 //                            t[3] & 0xff & ~(~0 << log2w)
-                            Operations.bytesArrToInt(t)
-                    ),
+                                    Operations.bytesArrToInt(t)
+                            )),
                     roundKeys[2 * i + 1]
             );
 
@@ -176,55 +180,63 @@ public class FeistelCipherRC6 {
             B = A;
             A = tmp;
 
-            byte[] u = Operations.cyclicShiftLeft(
-                    Operations.multiplyingByteArrayLength4(
-                            D,
-                            Operations.additionByteArrayLength4AndInt(
-                                    Operations.multiplyingByteArrayLength4AndInt(
+            byte[] u = Operations.intToBytes(
+                    Operations.cyclicShiftLeftInt(
+                            Operations.bytesArrToInt(
+                                    Operations.multiplyingByteArrayLength4(
                                             D,
-                                            2
-                                    ),
-                                    1
-                            )
-                    ),
-                    log2w
-            );
+                                            Operations.additionByteArrayLength4AndInt(
+                                                    Operations.multiplyingByteArrayLength4AndInt(
+                                                            D,
+                                                            2
+                                                    ),
+                                                    1
+                                            )
+                                    )),
+                            log2w
+                    ));
 
-            byte[] t = Operations.cyclicShiftLeft(
-                    Operations.multiplyingByteArrayLength4(
-                            B,
-                            Operations.additionByteArrayLength4AndInt(
-                                    Operations.multiplyingByteArrayLength4AndInt(
+            byte[] t = Operations.intToBytes(
+                    Operations.cyclicShiftLeftInt(
+                            Operations.bytesArrToInt(
+                                    Operations.multiplyingByteArrayLength4(
                                             B,
-                                            2
-                                    ),
-                                    1
-                            )
-                    ),
-                    log2w
-            );
+                                            Operations.additionByteArrayLength4AndInt(
+                                                    Operations.multiplyingByteArrayLength4AndInt(
+                                                            B,
+                                                            2
+                                                    ),
+                                                    1
+                                            )
+                                    )),
+                            log2w
+                    ));
 
             C = Operations.xor(
-                    Operations.cyclicShiftRight(
-                            Operations.subtractionByteArraysLength4(
-                                    C,
-                                    roundKeys[2 * i + 1]
-                            ),
+                    Operations.intToBytes(
+                            Operations.cyclicShiftRightInt(
+                                    Operations.bytesArrToInt(
+                                            Operations.subtractionByteArraysLength4(
+                                                    C,
+                                                    roundKeys[2 * i + 1]
+                                            )),
 //                            t[3] & 0xff & ~(~0 << log2w)
-                            Operations.bytesArrToInt(t)
-                    ),
+                                    Operations.bytesArrToInt(t)
+                            )),
                     u
             );
 
             A = Operations.xor(
-                    Operations.cyclicShiftRight(
-                            Operations.subtractionByteArraysLength4(
-                                    A,
-                                    roundKeys[2 * i]
-                            ),
+                    Operations.intToBytes(
+                            Operations.cyclicShiftRightInt(
+                                    Operations.bytesArrToInt(
+                                            Operations.subtractionByteArraysLength4(
+                                                    A,
+                                                    roundKeys[2 * i]
+                                            )),
 //                            u[3] & 0xff & ~(~0 << log2w)
-                            Operations.bytesArrToInt(u)
-                    ),
+                                    Operations.bytesArrToInt(u)
+                            )),
                     t
             );
         }
