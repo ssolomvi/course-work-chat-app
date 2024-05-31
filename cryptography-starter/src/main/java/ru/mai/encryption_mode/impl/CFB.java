@@ -16,6 +16,7 @@ public class CFB extends EncryptionModeAbstract implements EncryptionModePreviou
 
     public CFB(EncryptionAlgorithm algorithm, byte[] initVector) {
         super(algorithm, initVector);
+        log.debug("INIT VECTOR IS OF LENGTH {}", initVector.length);
         invokeNextAsNew();
     }
 

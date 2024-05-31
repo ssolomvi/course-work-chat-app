@@ -120,6 +120,18 @@ public class ChatRoomHandler {
         }
     }
 
+    public static Pair<Integer, Integer> getKeyAndBlockLength(Algorithm algorithm) {
+        return switch (algorithm) {
+            case ALGORITHM_DEAL -> new Pair<>(AlgorithmsConfigs.DEAL_KEY_LENGTH, AlgorithmsConfigs.DEAL_BLOCK_LENGTH);
+            case ALGORITHM_RIJNDAEL -> new Pair<>(AlgorithmsConfigs.RIJNDAEL_KEY_LENGTH, AlgorithmsConfigs.RIJNDAEL_BLOCK_LENGTH);
+            case ALGORITHM_RC6 -> new Pair<>(AlgorithmsConfigs.RC6_KEY_LENGTH, AlgorithmsConfigs.RC6_BLOCK_LENGTH);
+            case ALGORITHM_LOKI97 -> new Pair<>(AlgorithmsConfigs.LOKI97_KEY_LENGTH, AlgorithmsConfigs.LOKI97_BLOCK_LENGTH);
+            // todo:
+//            case ALGORITHM_MARS -> new Pair<>(MARS.KEY_LENGTH16, MARS.BLOCK_LENGTH);
+            default -> new Pair<>(AlgorithmsConfigs.DES_KEY_LENGTH, AlgorithmsConfigs.DES_BLOCK_LENGTH);
+        };
+    }
+
     public Map<String, EncryptionContext> anyDiffieHellmanNumbers(Login login) {
         Iterator<DiffieHellmanNumber> numbers;
         try {
@@ -157,6 +169,14 @@ public class ChatRoomHandler {
             PaddingModeEnum paddingMode = ContextBuilder.getPaddingModeEnum(metadata.getKey().getPaddingMode());
             Algorithm algorithm = metadata.getKey().getAlgorithm();
             byte[] initVector = metadata.getKey().getInitVector().getBytes(StandardCharsets.UTF_8);
+
+            Pair<Integer, Integer> keyAndBlockLength = getKeyAndBlockLength(algorithm);
+            if (initVector.length != keyAndBlockLength.getValue()) {
+                byte[] tmp = new byte[keyAndBlockLength.getValue()];
+                System.arraycopy(initVector, 0, tmp, 0, keyAndBlockLength.getValue());
+                initVector = tmp;
+            }
+
             byte[] key = DiffieHellmanNumbersHandler.getKey(new BigInteger(companionNumber.getNumber()), metadata.getValue(), new BigInteger(metadata.getKey().getDiffieHellmanP()));
 
             var context = ContextBuilder.createEncryptionContext(encryptionMode, paddingMode, algorithm, initVector, key);

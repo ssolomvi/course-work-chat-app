@@ -1,5 +1,6 @@
 package ru.mai.services;
 
+import com.vaadin.flow.component.html.Input;
 import com.vaadin.flow.spring.annotation.SpringComponent;
 import com.vaadin.flow.spring.annotation.VaadinSessionScope;
 import lombok.Getter;
@@ -7,12 +8,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import ru.mai.Login;
+import ru.mai.kafka.KafkaManager;
 import ru.mai.kafka.model.MessageDto;
 import ru.mai.services.chatroom.ChatRoomHandler;
 import ru.mai.services.connections.ConnectionHandler;
 import ru.mai.services.messages.MessageHandler;
 import ru.mai.utils.Pair;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -62,6 +65,7 @@ public class ChatClientService {
         connectionHandler.disconnect(loginStructure);
         chatRoomHandler.close();
         messageHandler.close();
+        KafkaManager.deleteTopic(KafkaManager.getTopicName(login));
     }
 
     public List<String> checkForDisconnected() {
@@ -130,8 +134,8 @@ public class ChatClientService {
         messageHandler.sendByteArray(login, companion, message.getBytes(StandardCharsets.UTF_8));
     }
 
-    public void sendFile(String companion, String filename, InputStream inputStream) {
-        messageHandler.sendFile(login, companion, inputStream, filename);
+    public void sendFile(String companion, String filename, byte[] data) {
+        messageHandler.sendFile(login, companion, filename, data);
     }
 
     public List<MessageDto> checkForMessages() {
@@ -144,7 +148,7 @@ public class ChatClientService {
     }
 
 
-    public Optional<Pair<String, InputStream>> processFileMessage(MessageDto msg) {
+    public Optional<Pair<String, byte[]>> processFileMessage(MessageDto msg) {
         return messageHandler.processFileMessage(msg);
     }
 

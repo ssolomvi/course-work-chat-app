@@ -12,12 +12,9 @@ import ru.mai.services.ContextsRepository;
 import ru.mai.services.repositories.FilesUnderDownloadRepository;
 import ru.mai.utils.Pair;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.RandomAccessFile;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
@@ -45,7 +42,6 @@ public class MessageHandler {
     public void addAllContexts(Map<String, EncryptionContext> companionsAndContexts) {
         for (var companionAndContext : companionsAndContexts.entrySet()) {
             contextsRepository.put(companionAndContext.getKey(), companionAndContext.getValue());
-            log.debug("Got context {} for {}", companionAndContext.getValue(), companionAndContext.getKey());
         }
     }
 
@@ -75,46 +71,38 @@ public class MessageHandler {
         }
     }
 
-    public void sendFile(String own, String companion, InputStream inputStream, String fileName) {
+    public void sendFile(String own, String companion, String filename, byte[] bytes) {
         var op = contextsRepository.get(companion);
         if (op.isEmpty()) {
             log.debug("Context for {} not found", companion);
-            throw new RuntimeException(String.format("Context for companion %s not found", companion));
+            throw new IllegalArgumentException(String.format("Context for companion %s not found", companion));
         }
 
         var context = op.get();
 
-        int readBytes;
+        int fileSize = bytes.length;
 
-        try {
-            long fileSize = Files.size(Path.of(fileName));
-            int numberOfPartitions = (int) (fileSize / FILE_PAGE_SIZE + (fileSize % FILE_PAGE_SIZE == 0 ? 0 : 1));
-            int currIndex = 0;
+        int numberOfPartitions = (fileSize / FILE_PAGE_SIZE + (fileSize % FILE_PAGE_SIZE == 0 ? 0 : 1));
 
-            byte[] arr;
+        byte[] encrypted = context.encrypt(bytes);
+        log.debug("Sending file of length {} bytes", encrypted.length);
+        byte[] arr;
 
-            if (fileSize < FILE_PAGE_SIZE) {
-                arr = new byte[(int) fileSize];
-            } else {
+        UUID id = UUID.randomUUID();
+
+        for (int currIndex = 0; currIndex < numberOfPartitions; currIndex++) {
+            int leftoverSize = encrypted.length - currIndex * FILE_PAGE_SIZE;
+            if (leftoverSize >= FILE_PAGE_SIZE) {
                 arr = new byte[FILE_PAGE_SIZE];
+                System.arraycopy(encrypted, currIndex * FILE_PAGE_SIZE, arr, 0, FILE_PAGE_SIZE);
+            } else if (leftoverSize != 0){
+                arr = new byte[leftoverSize];
+                System.arraycopy(encrypted, currIndex * FILE_PAGE_SIZE, arr, 0, leftoverSize);
+            } else {
+                break;
             }
-
-            UUID id = UUID.randomUUID();
-
-            while ((readBytes = inputStream.read(arr)) != -1) {
-                if (readBytes < FILE_PAGE_SIZE) {
-                    byte[] tmpArr = new byte[readBytes];
-                    System.arraycopy(arr, 0, tmpArr, 0, readBytes);
-                    arr = tmpArr;
-                }
-
-                byte[] encryptedPart = context.encryptPart(arr, currIndex == 0);
-
-                kafkaMessageHandler.sendMessage(companion, new MessageDto(id, own, fileName, numberOfPartitions, currIndex++, encryptedPart));
-                log.debug("Sent file part to {}", companion);
-            }
-        } catch (IOException e) {
-            log.error("I/O exception happened to {} sent by {}", fileName, companion);
+            log.debug("Sent file part to {}", companion);
+            kafkaMessageHandler.sendMessage(companion ,new MessageDto(id, own, filename, numberOfPartitions, currIndex, arr));
         }
     }
 
@@ -131,6 +119,10 @@ public class MessageHandler {
 
         for (var message : read) {
             messages.add(message.value());
+            if (!message.value().getFileName().isEmpty()) {
+                log.debug("GOT MESSAGE: {} : {} : {} : {}", message.value().getSender(), message.value().getFileName(),
+                        message.value().getNumberOfPartitions(), message.value().getCurrIndex());
+            }
         }
 
         return messages;
@@ -150,11 +142,10 @@ public class MessageHandler {
 
         byte[] decrypted = context.decrypt(msg.getValue());
         String decryptedString = new String(decrypted);
-        log.debug("GOT MESSAGE: {} from {}", decryptedString, sender);
         return Optional.of(decryptedString);
     }
 
-    public Optional<Pair<String, InputStream>> processFileMessage(MessageDto msg) {
+    public Optional<Pair<String, byte[]>> processFileMessage(MessageDto msg) {
         // decrypt part to
         try (RandomAccessFile rnd = new RandomAccessFile(msg.getFileName(), "rw")) {
             log.info("File {} opened as RandomAccessFile", msg.getFileName());
@@ -179,23 +170,48 @@ public class MessageHandler {
                 String fileName = msg.getFileName();
 
                 EncryptionContext context = op.get();
-                Path tmpPath = Path.of("TMP.txt");
-                Path fileNamePath = Path.of(fileName);
-                context.decrypt(fileNamePath, tmpPath);
 
-                if (tmpPath.toFile().renameTo(fileNamePath.toFile())) {
-                    log.info("Successfully decrypted file {} for {}", fileName, msg.getSender());
-                    return Optional.of(new Pair<>(fileName, new FileInputStream(fileNamePath.toFile())));
-                } else {
-                    log.warn("Decrypting file {} for {} unsuccessful", msg.getFileName(), msg.getSender());
-                    Files.delete(tmpPath);
-                }
+                byte[] encrypted = readFromRnd(rnd, msg.getNumberOfPartitions());
+                log.debug("Got encrypted file of length {} bytes", encrypted.length);
+
+                byte[] decrypted = context.decrypt(encrypted);
+
+                log.debug("Decrypted file {} for {}", fileName, msg.getSender());
+                return Optional.of(new Pair<>(fileName, decrypted));
             }
 
         } catch (IOException e) {
             log.error("I/O error while writing to file {}: ", msg.getFileName(), e);
+        } catch (Exception e) {
+            log.error("Exception happened {}: ", msg.getFileName(), e);
         }
         return Optional.empty();
+    }
+
+    private byte[] readFromRnd(RandomAccessFile rnd, int numberOfPartitions) throws IOException {
+        rnd.seek(0);
+
+        int readBytes;
+
+        byte[] result = new byte[0];
+        byte[] part = new byte[FILE_PAGE_SIZE];
+
+        for (int currPosition = 0; currPosition < numberOfPartitions; currPosition++) {
+            readBytes = rnd.read(part, 0, FILE_PAGE_SIZE);
+            if (readBytes != FILE_PAGE_SIZE) {
+                byte[] tmp = new byte[readBytes];
+                System.arraycopy(part, 0, tmp, 0, readBytes);
+                part = tmp;
+            }
+
+            int totalLength = result.length + readBytes;
+            byte[] tmp = new byte[totalLength];
+            System.arraycopy(result, 0, tmp, 0, result.length);
+            System.arraycopy(part, 0, tmp, currPosition * FILE_PAGE_SIZE, part.length);
+
+            result = tmp;
+        }
+        return result;
     }
 
     public void close() {

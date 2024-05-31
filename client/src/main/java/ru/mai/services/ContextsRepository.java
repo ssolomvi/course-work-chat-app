@@ -25,10 +25,10 @@ public class ContextsRepository {
         contexts.put(companion, context);
     }
 
-    public void put(String companion, String encryptionMode, String paddingMode, String algorithm, byte[] initVector, byte[] key) {
-        EncryptionContext context = ContextBuilder.createEncryptionContext(encryptionMode, paddingMode, algorithm, initVector, key);
-        put(companion, context);
-    }
+//    public void put(String companion, String encryptionMode, String paddingMode, String algorithm, byte[] initVector, byte[] key) {
+//        EncryptionContext context = ContextBuilder.createEncryptionContext(encryptionMode, paddingMode, algorithm, initVector, key);
+//        put(companion, context);
+//    }
 
     public boolean contains(String companion) {
         return contexts.containsKey(companion);
