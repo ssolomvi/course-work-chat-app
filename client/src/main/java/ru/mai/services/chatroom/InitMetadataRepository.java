@@ -22,12 +22,14 @@ public class InitMetadataRepository {
     }
 
     public Optional<Pair<InitRoomResponse, BigInteger>> get(String companion) {
-        var op = Optional.ofNullable(metadata.get(companion));
-
-        return op;
+        return Optional.ofNullable(metadata.get(companion));
     }
 
     public void remove(String companion) {
         metadata.remove(companion);
+    }
+
+    public void clear() {
+        metadata.clear();
     }
 }

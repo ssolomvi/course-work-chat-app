@@ -37,6 +37,10 @@ public class FilesUnderDownloadRepository {
         filesUnderDownload.remove(id);
     }
 
+    public void remove(String companion) {
+        filesUnderDownload.values().removeIf(metadata -> metadata.getCompanion().equals(companion));
+    }
+
     public Optional<String> getFilename(UUID id) {
         return Optional.of(filesUnderDownload.get(id).getFilename());
     }

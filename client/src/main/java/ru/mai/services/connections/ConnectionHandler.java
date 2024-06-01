@@ -1,6 +1,7 @@
 package ru.mai.services.connections;
 
 import com.vaadin.flow.spring.annotation.SpringComponent;
+import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import ru.mai.ChatServiceGrpc;
@@ -8,6 +9,10 @@ import ru.mai.EnumStatus;
 import ru.mai.Login;
 
 import java.math.BigInteger;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Used for connecting / disconnecting from server with or without chat rooms
@@ -43,5 +48,29 @@ public class ConnectionHandler {
             log.debug("Error disconnecting from server");
         }
 
+    }
+
+    public List<String> checkForDisconnected(Login login) {
+        List<String> disconnected = new LinkedList<>();
+        try {
+            Iterator<Login> disconnectedClients = blockingStub.checkDisconnect(login);
+
+            if (!disconnectedClients.hasNext()) {
+                return Collections.emptyList();
+            }
+
+            final Login dummy = Login.getDefaultInstance();
+            while (disconnectedClients.hasNext()) {
+                Login client = disconnectedClients.next();
+                if (client.equals(dummy)) {
+                    continue;
+                }
+                disconnected.add(client.getLogin());
+            }
+        } catch (StatusRuntimeException e) {
+            log.error("{} checkForDisconnected: Error happened, cause: ", login, e);
+            return Collections.emptyList();
+        }
+        return disconnected;
     }
 }

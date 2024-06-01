@@ -43,31 +43,32 @@ public class KafkaManager {
     }
 
 
-    public static KafkaConsumer<String, MessageDto> createKafkaConsumer(String topic) {
+    public static KafkaConsumer<String, MessageDto> createKafkaConsumer(String login) {
         KafkaConsumer<String, MessageDto> consumer = new KafkaConsumer<>(
                 Map.of(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS,
                         ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID_CONFIG,
+                        ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 50,
                         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, AUTO_OFFSET_RESET),
                 new StringDeserializer(),
                 new MessageDtoDeserializer()
         );
 
+        String topic = getTopicName(login);
         consumer.subscribe(Collections.singleton(topic));
+        log.debug("Start listening to topic {}", topic);
         return consumer;
     }
 
     public static KafkaProducer<String, MessageDto> createKafkaProducer() {
-        if (producer == null) {
-            int maxRequestSize = FILE_PAGE_SIZE >= 2000 ? FILE_PAGE_SIZE + FILE_PAGE_SIZE / 10 : FILE_PAGE_SIZE + 150;
-            String maxRequestSizeConfig = Integer.toString(maxRequestSize);
+        int maxRequestSize = FILE_PAGE_SIZE >= 2000 ? FILE_PAGE_SIZE + FILE_PAGE_SIZE / 10 : FILE_PAGE_SIZE + 150;
+        String maxRequestSizeConfig = Integer.toString(maxRequestSize);
 
-            producer = new KafkaProducer<>(
-                    Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS,
-                            ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString(),
-                            ProducerConfig.MAX_REQUEST_SIZE_CONFIG, maxRequestSizeConfig),
-                    new StringSerializer(),
-                    new MessageDtoSerializer());
-        }
+        producer = new KafkaProducer<>(
+                Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS,
+                        ProducerConfig.CLIENT_ID_CONFIG, UUID.randomUUID().toString(),
+                        ProducerConfig.MAX_REQUEST_SIZE_CONFIG, maxRequestSizeConfig),
+                new StringSerializer(),
+                new MessageDtoSerializer());
 
         return producer;
     }
@@ -78,8 +79,8 @@ public class KafkaManager {
 
             ListTopicsResult topics = admin.listTopics();
             if (topics.names().get() != null && (topics.names().get().contains(topicName))) {
-                    log.info("Topic {} already exist", topicName);
-                    return;
+                log.info("Topic {} already exist", topicName);
+                return;
 
             }
 

@@ -8,14 +8,12 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.*;
 import com.vaadin.flow.component.icon.Icon;
-import com.vaadin.flow.component.messages.MessageInput;
-import com.vaadin.flow.component.messages.MessageList;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.Scroller;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.page.Page;
-import com.vaadin.flow.component.progressbar.ProgressBar;
 import com.vaadin.flow.component.select.Select;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
@@ -35,10 +33,7 @@ import ru.mai.utils.Pair;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -47,27 +42,23 @@ import java.util.concurrent.TimeUnit;
 @PageTitle("Chat-rooms")
 @Route(value = "chat")
 public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<String> {
-    private final List<Pair<String, InputStream>> files = new LinkedList<>();
-    private final List<ChatInfo> chats = new CopyOnWriteArrayList<>();
+    private final HashMap<String, ChatTab> companionsChatTab = new HashMap<>();
     private final ScheduledExecutorService scheduled = Executors.newSingleThreadScheduledExecutor();
     private final ChatClientService chatClientService;
-    private final MessagesLayoutWrapper wrapper;
+    private final ChatRepository chatRepository;
+    private final Map<String, List<Pair<String, InputStream>>> filesToSend = new HashMap<>();
+    private MessagesLayoutScrollerWrapper wrapper;
     private String login;
     private ChatInfo currentChat;
     private Tabs tabs;
     private static final int FILE_PAGE_SIZE = 65536;
-    private VerticalLayout chatContainer;
-
-    public static String createParameter(String username) {
-        return username;
-    }
 
     @Override
     public void setParameter(BeforeEvent event, @WildcardParameter String parameter) {
         Notification.show(String.format("Hello, %s!", parameter));
         this.login = parameter;
-        chatClientService.setLogin(login);
-        pingServer();
+        chatClientService.setLogin(parameter);
+        pingServer(parameter);
         chatClientService.connect();
     }
 
@@ -91,134 +82,237 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         }
     }
 
-    public ChatroomsView(@Autowired ChatClientService chatClientService) {
+    public ChatroomsView(@Autowired ChatClientService chatClientService,
+                         @Autowired ChatRepository chatRepository) {
         this.chatClientService = chatClientService;
-
-        // todo: путь (route) должен меняться при переключении на табу чата
-        // т.е.: когда пользователь только заходит, путь страницы /login
-        // ниже не обязательно
-        // когда появляется первый активный чат, путь страницы /login/chat1, где chat1 может быть логином собеседника
-        // при нескольких чатах появляется возможность выбирать чат.
-        // В зависимости от открытого таба путь страницы превращается в /login/chatN
+        this.chatRepository = chatRepository;
 
         addClassNames("chat-view", LumoUtility.Width.FULL, LumoUtility.Display.FLEX, LumoUtility.Flex.AUTO);
         setSpacing(false);
 
         // Lay-outing
-        Aside side = createAside();
-        this.chatContainer = createChatContainer();
-        add(side, chatContainer);
-        chatContainer.setVisible(false);
-        // todo: set disable?
-        // if at least on chat room is created, set disable = false
-        // differ message list depending on current chat room
+        add(createAside(), createChatContainer());
         // TODO: MESSAGING!!!
 
-        this.wrapper = new MessagesLayoutWrapper(chatContainer);
+
+        setSizeFull();
     }
 
-    private void pingServer() {
-        log.debug("{}: start pinging server", login);
+    private void pingServer(String user) {
+        log.debug("{}: start pinging server", user);
         scheduled.scheduleAtFixedRate(
                 () -> {
+                    checkForDisconnectedCompanions();
 
                     chatClientService.checkForInitRoomRequests();
 
-                    chatClientService.checkForDeleteRoomRequest();
+                    checkForDeleteRoomRequest();
 
-                    if (chatClientService.getCheckForDiffieHellmanNumbers() != 0) {
-                        var newCompanions = chatClientService.checkForDiffieHellmanNumbers();
-                        var newChatTabs = newCompanions.stream().map(companion -> {
-                            var newChatTab = new ChatTab(new ChatInfo(companion));
+                    checkForDiffieHellmanNumbers();
 
-                            newChatTab.add(new Span("# " + newChatTab.getChatInfo().getCompanion()));
-
-                            Button buttonCloseTab = new Button(new Icon("lumo", "cross"), e -> {
-                                tabs.remove(newChatTab);
-                                int countOfChildrenTabs = tabs.getComponentCount();
-                                if (countOfChildrenTabs != 0) {
-                                    tabs.setSelectedIndex(0);
-                                }
-                            });
-
-                            buttonCloseTab.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-                            newChatTab.add(buttonCloseTab);
-
-                            return newChatTab;
-                        }).toList();
-
-                        for (var newChatTab : newChatTabs) {
-                            getUI().ifPresent(ui -> ui.access(() -> tabs.add(newChatTab)));
-                            currentChat = newChatTab.chatInfo;
-                            log.debug("Added chat tab with companion: " + newChatTab.getChatInfo().getCompanion());
-                        }
+                    if (tabs.getComponentCount() != 0) {
+                        checkForMessages();
                     }
                 },
                 0, 5, TimeUnit.SECONDS
         );
     }
 
+    private void checkForDisconnectedCompanions() {
+        var disconnectedCompanions = chatClientService.checkForDisconnected();
+
+        if (disconnectedCompanions.isEmpty()) {
+            return;
+        }
+
+        for (var disconnectedCompanion : disconnectedCompanions) {
+            removeTab(disconnectedCompanion);
+            log.debug("Deleting chat tab due to disconnected companion {}", disconnectedCompanion);
+        }
+    }
+
+    private void checkForDeleteRoomRequest() {
+        var response = chatClientService.checkForDeleteRoomRequest();
+
+        if (response.isEmpty()) {
+            return;
+        }
+
+        // remove all corresponding tabs
+        for (String deletedCompanion : response) {
+            removeTab(deletedCompanion);
+            log.debug("Deleting chat tab due to deleted companion {}", deletedCompanion);
+        }
+    }
+
+    private void checkForDiffieHellmanNumbers() {
+        if (chatClientService.getCheckForDiffieHellmanNumbers() != 0) {
+            var newCompanions = chatClientService.checkForDiffieHellmanNumbers();
+            var newChatTabs = newCompanions.stream().map(this::createNewChatTab).toList();
+
+            for (var newChatTab : newChatTabs) {
+                getUI().ifPresent(ui -> ui.access(() -> tabs.add(newChatTab)));
+                currentChat = newChatTab.chatInfo;
+                tabs.setSelectedTab(newChatTab);
+                companionsChatTab.put(newChatTab.getChatInfo().getCompanion(), newChatTab);
+                log.debug("Added chat tab with companion: " + newChatTab.getChatInfo().getCompanion());
+            }
+        }
+    }
+
+    private ChatTab createNewChatTab(String companion) {
+        var newChatTab = new ChatTab(new ChatInfo(companion));
+        newChatTab.addClassNames(LumoUtility.JustifyContent.BETWEEN);
+        newChatTab.add(new Span("# " + newChatTab.getChatInfo().getCompanion()));
+
+        Button closeTabButton = new Button(new Icon("lumo", "cross"), e -> {
+            removeTab(companion);
+            log.debug("Deleting chat tab due to pressing on btn close");
+        });
+
+        closeTabButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        newChatTab.add(closeTabButton);
+
+        return newChatTab;
+    }
+
+    private void removeTab(String companion) {
+        getUI().ifPresent(ui -> ui.access(() ->
+                {
+                    ChatTab chatTab = companionsChatTab.remove(companion);
+                    if (chatTab == null) {
+                        return;
+                    }
+                    tabs.remove(chatTab);
+                    int countOfChildrenTabs = tabs.getComponentCount();
+                    if (countOfChildrenTabs != 0) {
+                        tabs.setSelectedIndex(0);
+                        currentChat = ((ChatTab) tabs.getTabAt(0)).getChatInfo();
+                        wrapper.showMessages(currentChat.companion);
+                    }
+                    deleteRoom(companion);
+                    chatRepository.removeChat(companion);
+                    filesToSend.remove(companion);
+                }
+        ));
+    }
+
+    private void deleteRoom(String companion) {
+        if (chatClientService.deleteRoom(companion)) {
+            Notification.show(String.format("Chat room with %s deleted successfully", companion), 5000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        } else {
+            Notification.show(String.format("Companion %s already requested to delete room", companion), 5000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_WARNING);
+        }
+    }
+
+    private void checkForMessages() {
+        var response = chatClientService.checkForMessages();
+
+        if (response.isEmpty()) {
+            return;
+        }
+
+        for (var msg : response) {
+            if (msg.getFileName().isEmpty()) {
+                // it is a byte arr (not file)
+                // if it is a text, print message to chat
+                var textMsgOp = chatClientService.processByteArrayMessage(msg);
+
+                textMsgOp.ifPresent(s -> wrapper.showTextMessage(s, msg.getSender(), MessagesLayoutScrollerWrapper.Destination.ANOTHER));
+            } else {
+                var fileMsgOp = chatClientService.processFileMessage(msg);
+
+                if (fileMsgOp.isPresent()) {
+                    String fileName = fileMsgOp.get().getKey();
+                    byte[] bytes = fileMsgOp.get().getValue();
+
+                    if (fileName.endsWith(".jpg") || fileName.endsWith(".png") || fileName.endsWith(".jpeg")) {
+                        wrapper.showImageMessage(fileName, new ByteArrayInputStream(bytes), msg.getSender(), MessagesLayoutScrollerWrapper.Destination.ANOTHER);
+                    } else {
+                        wrapper.showFileMessage(fileName, new ByteArrayInputStream(bytes), msg.getSender(), MessagesLayoutScrollerWrapper.Destination.ANOTHER);
+                    }
+                }
+            }
+        }
+    }
+
     private VerticalLayout createChatContainer() {
         VerticalLayout chatLayout = new VerticalLayout();
-        chatLayout.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.Overflow.HIDDEN);
+        chatLayout.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.Width.AUTO, LumoUtility.Height.FULL, LumoUtility.Overflow.HIDDEN);
 
-        MessageList list = new MessageList();
-        list.setSizeFull();
+        VerticalLayout messageListLayout = new VerticalLayout();
+        Scroller scroller = new Scroller(messageListLayout);
+        scroller.addClassNames(LumoUtility.Width.AUTO);
+        scroller.setSizeFull();
+
+        this.wrapper = new MessagesLayoutScrollerWrapper(scroller);
 
         var msgInputBtnAddFileContainer = createMessageContainer();
 
         // todo: add interrupt encryption
-        ProgressBar progressBar = new ProgressBar(0, 1, 0);
 
-        chatLayout.add(list, msgInputBtnAddFileContainer, progressBar);
-
-        setSizeFull();
-        expand(list);
+        chatLayout.add(scroller, msgInputBtnAddFileContainer);
 
         return chatLayout;
     }
 
     private HorizontalLayout createMessageContainer() {
         HorizontalLayout messageLayout = new HorizontalLayout();
-        messageLayout.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.FlexDirection.ROW, LumoUtility.Width.AUTO, LumoUtility.AlignItems.CENTER, Padding.SMALL);
+        messageLayout.addClassNames(LumoUtility.Flex.AUTO, LumoUtility.FlexDirection.ROW, LumoUtility.AlignItems.CENTER, Padding.SMALL);
 
         Upload dropDisabledSingleFileUpload = createUpload();
 
-        MessageInput input = new MessageInput();
-        input.addSubmitListener(event -> {
+        TextField messageInput = new TextField();
+        messageInput.setPlaceholder("Enter message");
+        messageInput.setWidth("850px");
+
+        Button sendMessageBtn = new Button("Send", event -> {
+            if (currentChat == null || currentChat.getCompanion() == null) {
+                Notification.show("No chat selected", 5000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_WARNING);
+                return;
+            }
+
             // нажали на кнопку отправить
             sendMessage(dropDisabledSingleFileUpload);
 
-            String message = event.getValue();
-            if (message.length() > FILE_PAGE_SIZE) {
-                Notification.show(String.format("Message is too long, it must not be more than %d bytes.", FILE_PAGE_SIZE)).addThemeVariants(NotificationVariant.LUMO_WARNING);
+            String message = messageInput.getValue();
+            if (!message.isEmpty()) {
+                if (message.length() > FILE_PAGE_SIZE) {
+                    Notification.show(String.format("Message is too long, it must not be more than %d bytes.", FILE_PAGE_SIZE)).addThemeVariants(NotificationVariant.LUMO_WARNING);
+                    return;
+                }
+                chatClientService.sendMessage(currentChat.getCompanion(), message);
+                wrapper.showTextMessage(message, currentChat.getCompanion(), MessagesLayoutScrollerWrapper.Destination.OWN);
+                messageInput.clear();
             }
-            chatClientService.sendMessage(currentChat.companion, event.getValue());
-            wrapper.showTextMessage(event.getValue(), MessagesLayoutWrapper.Destination.OWN);
         });
 
-        input.setWidthFull();
-
-
-        messageLayout.add(dropDisabledSingleFileUpload, input);
+        messageLayout.add(dropDisabledSingleFileUpload, messageInput, sendMessageBtn);
         return messageLayout;
     }
 
     private void sendMessage(Upload upload) {
         try {
+            upload.clearFileList();
             String companion = currentChat.getCompanion();
-            for (var file : files) {
-                String fileName = file.getKey();
-                chatClientService.sendFile(companion, file.getKey(), file.getValue());
+            var metadatas = filesToSend.get(companion);
+            if (metadatas == null || metadatas.isEmpty()) {
+                return;
+            }
+            filesToSend.remove(companion);
+
+            for (var metadata : metadatas) {
+                String fileName = metadata.getKey();
+                InputStream file = metadata.getValue();
+                byte[] bytes = file.readAllBytes();
+                chatClientService.sendFile(companion, fileName, bytes);
 
                 if (fileName.endsWith(".jpg") || fileName.endsWith(".png") || fileName.endsWith(".jpeg")) {
-                    wrapper.showImageMessage(fileName, file.getValue().readAllBytes(), MessagesLayoutWrapper.Destination.OWN);
+                    wrapper.showImageMessage(fileName, new ByteArrayInputStream(bytes), companion, MessagesLayoutScrollerWrapper.Destination.OWN);
                 } else {
-                    wrapper.showFileMessage(fileName, file.getValue().readAllBytes(), MessagesLayoutWrapper.Destination.OWN);
+                    wrapper.showFileMessage(fileName, new ByteArrayInputStream(bytes), companion, MessagesLayoutScrollerWrapper.Destination.OWN);
                 }
             }
-            upload.clearFileList();
-            files.clear();
         } catch (IOException | RuntimeException e) {
             // runtime exception is thrown if encryption context not found
             log.error("I/O exception happened trying to send file, ", e);
@@ -228,16 +322,16 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
     private Aside createAside() {
         Aside side = new Aside();
         side.addClassNames(LumoUtility.Display.FLEX, LumoUtility.FlexDirection.COLUMN, LumoUtility.Flex.GROW_NONE,
-                LumoUtility.Flex.SHRINK_NONE, LumoUtility.Background.CONTRAST_5, LumoUtility.AlignItems.END);
+                LumoUtility.Flex.SHRINK_NONE, LumoUtility.Background.CONTRAST_5, LumoUtility.AlignItems.END, LumoUtility.Margin.SMALL);
         side.setWidth("18rem");
 
-        tabs = createTabs(chats);
+        tabs = createTabs();
         tabs.addSelectedChangeListener(event -> {
             if (tabs.getComponentCount() != 0) {
                 currentChat = ((ChatTab) event.getSelectedTab()).getChatInfo();
+                wrapper.showMessages(currentChat.companion);
             } else {
                 currentChat = null;
-                this.chatContainer.setVisible(false);
             }
         });
 
@@ -248,45 +342,36 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         return side;
     }
 
-    private Tabs createTabs(List<ChatInfo> chats) {
+    private Tabs createTabs() {
         tabs = new Tabs();
-        for (ChatInfo chat : chats) {
-            ChatTab tab = new ChatTab(chat);
-            tab.addClassNames(LumoUtility.JustifyContent.BETWEEN);
-
-            tab.add(new Span("# " + chat.companion));
-
-            Button buttonCloseTab = new Button(new Icon("lumo", "cross"),
-                    e -> {
-                        tabs.remove(tab);
-                        int countOfChildrenTabs = tabs.getComponentCount();
-                        if (countOfChildrenTabs != 0) {
-                            tabs.setSelectedIndex(0);
-                        } else {
-                            this.chatContainer.setVisible(false);
-                        }
-                    });
-            buttonCloseTab.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-            tab.add(buttonCloseTab);
-            tabs.add(tab);
-        }
         tabs.setOrientation(Tabs.Orientation.VERTICAL);
+        tabs.setWidthFull();
         tabs.addClassNames(LumoUtility.Flex.GROW, LumoUtility.Flex.SHRINK, LumoUtility.Overflow.HIDDEN);
         return tabs;
     }
 
     private Upload createUpload() {
-        MultiFileMemoryBuffer multiFileMemoryBuffer = new MultiFileMemoryBuffer();
-        Upload upload = new Upload(multiFileMemoryBuffer);
+        var memoryBuffer = new MultiFileMemoryBuffer();
+        Upload upload = new Upload(memoryBuffer);
 
         upload.setDropAllowed(false);
 
         upload.addSucceededListener(event -> {
+            if (currentChat == null) {
+                Notification.show("No chat selected", 5000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_WARNING);
+                throw new IllegalStateException("No chat selected");
+            }
             // Get information about the uploaded file
             String fileName = event.getFileName();
 
-            files.add(new Pair<>(fileName, multiFileMemoryBuffer.getInputStream(fileName)));
-            // Do something with the file data
+            List<Pair<String, InputStream>> toPut;
+            if (filesToSend.containsKey(currentChat.getCompanion())) {
+                toPut = filesToSend.get(currentChat.getCompanion());
+            } else {
+                toPut = new LinkedList<>();
+            }
+            toPut.add(new Pair<>(fileName, memoryBuffer.getInputStream(fileName)));
+            filesToSend.put(currentChat.getCompanion(), toPut);
         });
 
         return upload;
@@ -310,6 +395,7 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
     private Button createButtonAddChatRoom(Dialog dialogAddChatRoom) {
         Button btn = new Button("Add chat room", e -> dialogAddChatRoom.open());
         btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        btn.setWidthFull();
 
         return btn;
     }
@@ -338,6 +424,8 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
             String companion = loginField.getValue();
             if (companion.equals(login)) {
                 Notification.show("You cannot create chat room with yourself, sorry", 5000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_WARNING);
+                loginField.clear();
+                return;
             }
 
             if (companion.isEmpty()) {
@@ -345,10 +433,12 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
                 return;
             }
             if (chatClientService.addRoom(companion, selectAlgorithm.getValue(), selectEncryptionMode.getValue(), selectPaddingMode.getValue())) {
-                Notification.show(String.format("Chat room with %s was initiated!", companion)).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                Notification.show(String.format("Chat room with %s was initiated!", companion), 5000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                loginField.clear();
                 dialog.close();
             } else {
                 Notification.show(String.format("Chat room has not been created, 'cause %s is offline or already sent u a request", companion), 10000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_WARNING);
+                loginField.clear();
             }
         });
         submit.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
@@ -367,10 +457,13 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         Page page = attachEvent.getUI().getPage();
         page.retrieveExtendedClientDetails(details -> setMobile(details.getWindowInnerWidth() < 740));
         page.addBrowserWindowResizeListener(e -> setMobile(e.getWidth() < 740));
+
+        chatClientService.initMessageHandler();
     }
 
     @Override
     protected void onDetach(DetachEvent detachEvent) {
+        log.debug("onDetach");
         chatClientService.disconnect();
         scheduled.shutdownNow();
     }
@@ -379,19 +472,20 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         tabs.setOrientation(mobile ? Tabs.Orientation.HORIZONTAL : Tabs.Orientation.VERTICAL);
     }
 
-    public class MessagesLayoutWrapper {
-        private final VerticalLayout messagesLayout;
+    public class MessagesLayoutScrollerWrapper {
+        private final Scroller messagesLayout;
 
         public enum Destination {
             OWN,
             ANOTHER
         }
 
-        public MessagesLayoutWrapper(VerticalLayout messagesLayout) {
+        public MessagesLayoutScrollerWrapper(Scroller messagesLayout) {
             this.messagesLayout = messagesLayout;
+            this.messagesLayout.setContent(new VerticalLayout());
         }
 
-        public void showTextMessage(String textMessage, Destination destination) {
+        public void showTextMessage(String textMessage, String companion, Destination destination) {
             Optional<UI> uiOptional = getUI();
 
             if (uiOptional.isPresent()) {
@@ -403,14 +497,10 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
                     if (destination.equals(Destination.OWN)) {
                         messageDiv.getStyle()
-                                .set("margin-left", "auto")
-                                .set("background-color", "#cceeff");
-
-//                        setPossibilityToDelete(messagesLayout, messageDiv);
+                                .set("margin-left", "auto");
                     } else {
                         messageDiv.getStyle()
-                                .set("margin-right", "auto")
-                                .set("background-color", "#f2f2f2");
+                                .set("margin-right", "auto");
                     }
 
                     messageDiv.getStyle()
@@ -418,56 +508,64 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
                             .set("padding", "10px")
                             .set("border", "1px solid #ddd");
 
-                    messagesLayout.add(messageDiv);
-                    messagesLayout.getElement().executeJs("this.scrollTo(0, this.scrollHeight);");
-                });
-            }
-        }
+                    if (currentChat.getCompanion().equals(companion)) {
+                        VerticalLayout updated = ((VerticalLayout) messagesLayout.getContent());
+                        updated.add(messageDiv);
 
-        public void showImageMessage(String nameFile, byte[] data, Destination destination) {
-            Optional<UI> uiOptional = getUI();
-
-            if (uiOptional.isPresent()) {
-                UI ui = uiOptional.get();
-
-                ui.access(() -> {
-                    Div imageDiv = new Div();
-
-                    StreamResource resource = new StreamResource(nameFile, () -> new ByteArrayInputStream(data));
-                    Image image = new Image(resource, "Uploaded image");
-
-                    imageDiv.add(image);
-
-                    if (destination.equals(Destination.OWN)) {
-                        imageDiv.getStyle()
-                                .set("margin-left", "auto")
-                                .set("background-color", "#cceeff");
-//                        setPossibilityToDelete(messagesLayout, imageDiv);
-                    } else {
-                        imageDiv.getStyle()
-                                .set("margin-right", "auto")
-                                .set("background-color", "#f2f2f2");
+                        messagesLayout.setContent(updated);
                     }
 
-                    imageDiv.getStyle()
-                            .set("overflow", "hidden")
-                            .set("padding", "10px")
-                            .set("border-radius", "5px")
-                            .set("border", "1px solid #ddd")
-                            .set("width", "60%")
-                            .set("flex-shrink", "0");
-
-                    image.getStyle()
-                            .set("width", "100%")
-                            .set("height", "100%");
-
-                    messagesLayout.add(imageDiv);
-                    messagesLayout.getElement().executeJs("this.scrollTo(0, this.scrollHeight);");
+                    chatRepository.putMessage(companion, messageDiv);
                 });
             }
         }
 
-        public void showFileMessage(String nameFile, byte[] data, Destination destination) {
+        public void showImageMessage(String nameFile, ByteArrayInputStream file, String companion, Destination destination) {
+            getUI().ifPresent(ui -> ui.access(() -> {
+                Div imageDiv = new Div();
+
+                Image image;
+
+                try {
+                    StreamResource resource = new StreamResource(nameFile, () -> file);
+                    image = new Image(resource, "Uploaded image");
+                } catch (Exception e) {
+                    log.debug("EXCEPTION: ", e);
+                    return;
+                }
+
+
+                imageDiv.add(image);
+
+                if (destination.equals(Destination.OWN)) {
+                    imageDiv.getStyle()
+                            .set("margin-left", "auto");
+                } else {
+                    imageDiv.getStyle()
+                            .set("margin-right", "auto");
+                }
+
+                imageDiv.getStyle()
+                        .set("overflow", "hidden")
+                        .set("padding", "5px")
+                        .set("border-radius", "5px")
+                        .set("border", "1px solid #ddd")
+                        .set("width", "60%")
+                        .set("flex-shrink", "0");
+
+                image.getStyle()
+                        .set("width", "100%")
+                        .set("height", "100%");
+
+                VerticalLayout updated = ((VerticalLayout) messagesLayout.getContent());
+                updated.add(imageDiv);
+
+                messagesLayout.setContent(updated);
+                chatRepository.putMessage(companion, imageDiv);
+            }));
+        }
+
+        public void showFileMessage(String nameFile, ByteArrayInputStream stream, String companion, Destination destination) {
             Optional<UI> uiOptional = getUI();
 
             if (uiOptional.isPresent()) {
@@ -475,7 +573,7 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
                 ui.access(() -> {
                     Div fileDiv = new Div();
-                    StreamResource resource = new StreamResource(nameFile, () -> new ByteArrayInputStream(data));
+                    StreamResource resource = new StreamResource(nameFile, () -> stream);
 
                     Anchor downloadLink = new Anchor(resource, "");
                     downloadLink.getElement().setAttribute("download", true);
@@ -486,14 +584,10 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
                     if (destination.equals(Destination.OWN)) {
                         fileDiv.getStyle()
-                                .set("margin-left", "auto")
-                                .set("background-color", "#cceeff");
-
-//                        setPossibilityToDelete(messagesLayout, fileDiv);
+                                .set("margin-left", "auto");
                     } else {
                         fileDiv.getStyle()
-                                .set("margin-right", "auto")
-                                .set("background-color", "#f2f2f2");
+                                .set("margin-right", "auto");
                     }
 
                     fileDiv.getStyle()
@@ -505,42 +599,35 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
                             .set("border", "1px solid #ddd")
                             .set("flex-shrink", "0");
 
-                    messagesLayout.add(fileDiv);
+                    VerticalLayout updated = ((VerticalLayout) messagesLayout.getContent());
+                    updated.add(fileDiv);
+
+                    messagesLayout.setContent(updated);
+                    chatRepository.putMessage(companion, fileDiv);
                     messagesLayout.getElement().executeJs("this.scrollTo(0, this.scrollHeight);");
                 });
             }
         }
 
-//        private void setPossibilityToDelete(VerticalLayout messagesLayout, Div fileDiv) {
-//            messagesLayout.getElement().executeJs("this.scrollTo(0, this.scrollHeight);");
-//
-//            fileDiv.addClickListener(event -> {
-//                int indexMessage = messagesLayout.indexOf(fileDiv);
-//                messagesLayout.remove(fileDiv);
-//                kafkaWriter.processing(new Message("delete_message", "text", null, indexMessage, null).toBytes(), outputTopic);
-//            });
-//        }
-
         private void clearMessages() {
-            Optional<UI> uiOptional = getUI();
+            getUI().ifPresent(ui -> ui.access(
+                    () -> messagesLayout.setContent(new VerticalLayout())
+            ));
+        }
 
-            if (uiOptional.isPresent()) {
-                UI ui = uiOptional.get();
-                ui.access(messagesLayout::removeAll);
+        private void showMessages(String companion) {
+            var messages = chatRepository.getAllMessages(companion);
+
+            wrapper.clearMessages();
+            if (messages != null && !messages.isEmpty()) {
+                getUI().ifPresent(ui -> ui.access(() -> {
+                    VerticalLayout layout = new VerticalLayout();
+                    for (var message : messages) {
+                        layout.add(message);
+                    }
+                    messagesLayout.setContent(layout);
+                }));
             }
         }
-//
-//        private void deleteMessage(int index) {
-//            Optional<UI> uiOptional = getUI();
-//
-//            if (uiOptional.isPresent()) {
-//                UI ui = uiOptional.get();
-//                ui.access(() -> {
-//                    Component componentToRemove = messagesLayout.getComponentAt(index);
-//                    messagesLayout.remove(componentToRemove);
-//                });
-//            }
-//        }
     }
-
 }

@@ -59,8 +59,6 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
     private static final int FILE_PAGE_SIZE = 65536;
     private static final int ONE_THREAD_BLOCK_SIZE = 8192; // size of byte array to pass for one thread to work on
     private final int filePageSizeModified;
-    private byte[] prevForDecryptPart;
-
 
     // region Constructing EncryptionContextAbstract
     public SymmetricEncryptionContextImpl(EncryptionModeEnum encryptionModeEnum, PaddingModeEnum paddingModeEnum, EncryptionAlgorithm algorithm) {

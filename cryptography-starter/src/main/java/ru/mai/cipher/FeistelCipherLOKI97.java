@@ -34,7 +34,7 @@ public class FeistelCipherLOKI97 {
         }
         if (input.length != 16) {
             throw new IllegalArgumentExceptionWithLog("methodForConstructingBlockCiphersEncryption:" +
-                    "Param input must be length 16 bytes", log);
+                    "Param input must be length 16 bytes, it's " + input.length, log);
         }
 
         int leftRightSize = input.length / 2;

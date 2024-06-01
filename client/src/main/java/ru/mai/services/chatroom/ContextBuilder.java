@@ -1,5 +1,6 @@
 package ru.mai.services.chatroom;
 
+import lombok.extern.slf4j.Slf4j;
 import ru.mai.Algorithm;
 import ru.mai.EncryptionMode;
 import ru.mai.PaddingMode;
@@ -10,6 +11,7 @@ import ru.mai.encryption_context.SymmetricEncryptionContextImpl;
 import ru.mai.encryption_mode.EncryptionModeEnum;
 import ru.mai.encryption_padding_mode.PaddingModeEnum;
 
+@Slf4j
 public class ContextBuilder {
     public static EncryptionModeEnum getEncryptionModeEnum(String mode) {
         return switch (mode) {
@@ -161,6 +163,7 @@ public class ContextBuilder {
                                                             Algorithm algorithm,
                                                             byte[] initVector,
                                                             byte[] normalizedKey) {
+        log.debug("encryptionModeEnum: {}, paddingModeEnum {}, algorithm {}, initVector {}, normalizedKey {}", encryptionModeEnum, paddingModeEnum, algorithm, initVector, normalizedKey);
         if (encryptionModeEnum.needsInitVector()) {
             return new SymmetricEncryptionContextImpl(encryptionModeEnum, paddingModeEnum, getEncryptionAlgorithm(algorithm, normalizedKey), initVector);
         }

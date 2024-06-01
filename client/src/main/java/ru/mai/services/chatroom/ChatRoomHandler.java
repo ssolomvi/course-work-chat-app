@@ -1,16 +1,14 @@
 package ru.mai.services.chatroom;
 
+import com.vaadin.flow.spring.annotation.SpringComponent;
 import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Scope;
 import ru.mai.*;
-import ru.mai.db.model.ChatMetadataEntity;
-import ru.mai.db.repositories.ChatMetadataEntityRepository;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.encryption_mode.EncryptionModeEnum;
 import ru.mai.encryption_padding_mode.PaddingModeEnum;
-import ru.mai.services.ContextsRepository;
 import ru.mai.utils.Pair;
 
 import java.math.BigInteger;
@@ -18,27 +16,16 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Slf4j
-@Component
+@SpringComponent
+@Scope("prototype")
 public class ChatRoomHandler {
     private final ChatServiceGrpc.ChatServiceBlockingStub blockingStub;
     private final InitMetadataRepository metadataRepository;
-    private final ContextsRepository contextsRepository;
-    private final ChatMetadataEntityRepository chatMetadataRepository;
 
     public ChatRoomHandler(@Autowired ChatServiceGrpc.ChatServiceBlockingStub blockingStub,
-                           @Autowired InitMetadataRepository metadataRepository,
-                           @Autowired ContextsRepository contextsRepository,
-                           @Autowired ChatMetadataEntityRepository chatMetadataRepository) {
+                           @Autowired InitMetadataRepository metadataRepository) {
         this.blockingStub = blockingStub;
         this.metadataRepository = metadataRepository;
-        this.contextsRepository = contextsRepository;
-        this.chatMetadataRepository = chatMetadataRepository;
-    }
-
-    public void createContexts() {
-        for (var room : chatMetadataRepository.findAll()) {
-            contextsRepository.put(room.getCompanion(), room.getEncryptionMode(), room.getPaddingMode(), room.getAlgorithm(), room.getInitVector(), room.getKey());
-        }
     }
 
     /**
@@ -79,15 +66,13 @@ public class ChatRoomHandler {
      * @return Returns list of initiators, if any
      */
     public List<String> checkForInitRoomRequests(Login login) {
-        List<String> initiators;
+        List<String> initiators = new LinkedList<>();
         try {
             Iterator<InitRoomResponse> responses = blockingStub.checkForInitRoomRequest(login);
 
             if (!responses.hasNext()) {
                 return Collections.emptyList();
             }
-
-            initiators = new LinkedList<>();
 
             final InitRoomResponse dummy = InitRoomResponse.getDefaultInstance();
             while (responses.hasNext()) {
@@ -135,20 +120,32 @@ public class ChatRoomHandler {
         }
     }
 
-    public Set<String> anyDiffieHellmanNumbers(Login login) {
+    public static Pair<Integer, Integer> getKeyAndBlockLength(Algorithm algorithm) {
+        return switch (algorithm) {
+            case ALGORITHM_DEAL -> new Pair<>(AlgorithmsConfigs.DEAL_KEY_LENGTH, AlgorithmsConfigs.DEAL_BLOCK_LENGTH);
+            case ALGORITHM_RIJNDAEL -> new Pair<>(AlgorithmsConfigs.RIJNDAEL_KEY_LENGTH, AlgorithmsConfigs.RIJNDAEL_BLOCK_LENGTH);
+            case ALGORITHM_RC6 -> new Pair<>(AlgorithmsConfigs.RC6_KEY_LENGTH, AlgorithmsConfigs.RC6_BLOCK_LENGTH);
+            case ALGORITHM_LOKI97 -> new Pair<>(AlgorithmsConfigs.LOKI97_KEY_LENGTH, AlgorithmsConfigs.LOKI97_BLOCK_LENGTH);
+            // todo:
+//            case ALGORITHM_MARS -> new Pair<>(MARS.KEY_LENGTH16, MARS.BLOCK_LENGTH);
+            default -> new Pair<>(AlgorithmsConfigs.DES_KEY_LENGTH, AlgorithmsConfigs.DES_BLOCK_LENGTH);
+        };
+    }
+
+    public Map<String, EncryptionContext> anyDiffieHellmanNumbers(Login login) {
         Iterator<DiffieHellmanNumber> numbers;
         try {
             numbers = blockingStub.anyDiffieHellmanNumber(login);
         } catch (StatusRuntimeException e) {
             log.debug("{}: anyDiffieHellmanNumbers: Error occurred, cause:, ", login.getLogin(), e);
-            return Collections.emptySet();
+            return Collections.emptyMap();
         }
 
         if (!numbers.hasNext()) {
-            return Collections.emptySet();
+            return Collections.emptyMap();
         }
 
-        final Set<String> newCompanions = new HashSet<>();
+        final Map<String, EncryptionContext> newCompanions = new HashMap<>();
         final DiffieHellmanNumber dummy = DiffieHellmanNumber.getDefaultInstance();
 
         while (numbers.hasNext()) {
@@ -172,20 +169,19 @@ public class ChatRoomHandler {
             PaddingModeEnum paddingMode = ContextBuilder.getPaddingModeEnum(metadata.getKey().getPaddingMode());
             Algorithm algorithm = metadata.getKey().getAlgorithm();
             byte[] initVector = metadata.getKey().getInitVector().getBytes(StandardCharsets.UTF_8);
+
+            Pair<Integer, Integer> keyAndBlockLength = getKeyAndBlockLength(algorithm);
+            if (initVector.length != keyAndBlockLength.getValue()) {
+                byte[] tmp = new byte[keyAndBlockLength.getValue()];
+                System.arraycopy(initVector, 0, tmp, 0, keyAndBlockLength.getValue());
+                initVector = tmp;
+            }
+
             byte[] key = DiffieHellmanNumbersHandler.getKey(new BigInteger(companionNumber.getNumber()), metadata.getValue(), new BigInteger(metadata.getKey().getDiffieHellmanP()));
-
-            // save to db
-            chatMetadataRepository.save(new ChatMetadataEntity(companionNumber.getCompanionLogin(),
-                    metadata.getKey().getEncryptionMode().toString(),
-                    metadata.getKey().getPaddingMode().toString(),
-                    metadata.getKey().getAlgorithm().toString(),
-                    initVector, key));
-
 
             var context = ContextBuilder.createEncryptionContext(encryptionMode, paddingMode, algorithm, initVector, key);
 
-            contextsRepository.put(companionNumber.getCompanionLogin(), context);
-            newCompanions.add(companionNumber.getCompanionLogin());
+            newCompanions.put(companionNumber.getCompanionLogin(), context);
 
             log.debug("{} -> {}: created context", login.getLogin(), companionNumber.getCompanionLogin());
         }
@@ -233,4 +229,7 @@ public class ChatRoomHandler {
         return Collections.emptyList();
     }
 
+    public void close() {
+        metadataRepository.clear();
+    }
 }
