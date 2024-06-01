@@ -10,7 +10,7 @@ import ru.mai.utils.Operations;
 import java.util.Collection;
 
 public class FeistelCipherRC6 {
-    private static final Logger log = LoggerFactory.getLogger(FeistelCipherDES.class);
+    private static final Logger log = LoggerFactory.getLogger(FeistelCipherRC6.class);
     private static byte[][] roundKeys;
 
     public FeistelCipherRC6(RoundKeyGeneration keyGen, byte[] key) {

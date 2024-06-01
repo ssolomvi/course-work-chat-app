@@ -562,6 +562,10 @@ public class Operations {
 
     // endregion
 
+    public static int lowestNBit(int number, int n) {
+        return number & ((1 << n) - 1);
+    }
+
     public static byte[] negate(byte[] arr) {
         int arrLength = arr.length;
         byte[] result = new byte[arrLength];

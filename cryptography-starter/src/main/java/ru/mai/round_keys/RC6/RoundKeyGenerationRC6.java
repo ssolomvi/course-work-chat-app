@@ -10,7 +10,7 @@ import ru.mai.utils.Operations;
 import static java.lang.Math.max;
 
 public class RoundKeyGenerationRC6 implements RoundKeyGeneration {
-    static final Logger log = LoggerFactory.getLogger(RoundKeyGenerationLOKI97.class);
+    static final Logger log = LoggerFactory.getLogger(RoundKeyGenerationRC6.class);
     private static final int ROUND_COUNT_RC6 = 20;
     private static final int Q32 = 0x9e3779b9;
     private static final int P32 = 0xb7e15163;
