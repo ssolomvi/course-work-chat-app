@@ -8,7 +8,7 @@ import ru.mai.round_keys.RoundKeyGeneration;
 import ru.mai.utils.Operations;
 
 public class FeistelCipherLOKI97 {
-    private static final Logger log = LoggerFactory.getLogger(FeistelCipherDES.class);
+    private static final Logger log = LoggerFactory.getLogger(FeistelCipherLOKI97.class);
     private final EncryptionConversion encryptionConversion;
     private static byte[][] roundKeys; // must be 48 for roundCount = 16
 

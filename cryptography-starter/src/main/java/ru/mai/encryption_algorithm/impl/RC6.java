@@ -30,7 +30,7 @@ public class RC6 implements EncryptionAlgorithm {
         b = lenKey * 8;
 
         RoundKeyGenerationRC6 roundKeyGenerationRC6 = new RoundKeyGenerationRC6();
-        this.cipherEncryption = new FeistelCipherRC6(roundKeyGenerationRC6, key)    ;
+        this.cipherEncryption = new FeistelCipherRC6(roundKeyGenerationRC6, key);
         this.cipherDecryption = new FeistelCipherRC6(roundKeyGenerationRC6, key);
     }
 

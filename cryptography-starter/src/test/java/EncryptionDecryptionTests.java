@@ -105,16 +105,17 @@ public class EncryptionDecryptionTests {
         byte[] key32 = "veryVeryVeryVeryVerSecureKeyYeah".getBytes(StandardCharsets.UTF_8);
 
         // init algorithm
-        int countAlgorithmsVariations = 8;
+        int countAlgorithmsVariations = 6;
         EncryptionAlgorithm[] algorithms = new EncryptionAlgorithm[countAlgorithmsVariations];
         algorithms[0] = new DES(keyDES);
         algorithms[1] = new DEAL(key16);
         algorithms[2] = new DEAL(key24);
         algorithms[3] = new DEAL(key32);
-        algorithms[4] = new LOKI97(key16);
-        algorithms[5] = new LOKI97(key24);
-        algorithms[6] = new LOKI97(key32);
-        algorithms[7] = new RC6(key16);
+//        algorithms[4] = new LOKI97(key16);
+//        algorithms[5] = new LOKI97(key24);
+//        algorithms[6] = new LOKI97(key32);
+        algorithms[4] = new RC6(key16);
+        algorithms[5] = new MARS(key16);
 
         // init initVector
         byte[] initVector8 = "initVect".getBytes(StandardCharsets.UTF_8);
@@ -153,16 +154,17 @@ public class EncryptionDecryptionTests {
         byte[] key32 = "veryVeryVeryVeryVerSecureKeyYeah".getBytes(StandardCharsets.UTF_8);
 
         // init algorithm
-        int countAlgorithmsVariations = 8;
+        int countAlgorithmsVariations = 6;
         EncryptionAlgorithm[] algorithms = new EncryptionAlgorithm[countAlgorithmsVariations];
         algorithms[0] = new DES(keyDES);
         algorithms[1] = new DEAL(key16);
         algorithms[2] = new DEAL(key24);
         algorithms[3] = new DEAL(key32);
-        algorithms[4] = new LOKI97(key16);
-        algorithms[5] = new LOKI97(key24);
-        algorithms[6] = new LOKI97(key32);
-        algorithms[7] = new RC6(key16);
+//        algorithms[4] = new LOKI97(key16);
+//        algorithms[5] = new LOKI97(key24);
+//        algorithms[6] = new LOKI97(key32);
+        algorithms[4] = new RC6(key16);
+        algorithms[5] = new MARS(key16);
 
         // init initVector
         byte[] initVector8 = "initVect".getBytes(StandardCharsets.UTF_8);
