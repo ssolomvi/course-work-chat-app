@@ -65,7 +65,6 @@ public class ChatClientService {
         connectionHandler.disconnect(loginStructure);
         chatRoomHandler.close();
         messageHandler.close();
-        KafkaManager.deleteTopic(KafkaManager.getTopicName(login));
     }
 
     public List<String> checkForDisconnected() {

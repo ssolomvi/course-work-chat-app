@@ -6,12 +6,15 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.errors.InterruptException;
 import org.springframework.context.annotation.Scope;
 import ru.mai.kafka.model.MessageDto;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 @Slf4j
 @SpringComponent
@@ -25,7 +28,6 @@ public class KafkaMessageHandler {
     public void init(String login) {
         this.login = login;
         this.producer = KafkaManager.createKafkaProducer();
-        KafkaManager.createTopic(KafkaManager.getTopicName(login));
         this.consumer = KafkaManager.createKafkaConsumer(login);
     }
 

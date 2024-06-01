@@ -114,7 +114,7 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
                         checkForMessages();
                     }
                 },
-                0, 5, TimeUnit.SECONDS
+                0, 3, TimeUnit.SECONDS
         );
     }
 
@@ -151,9 +151,13 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
             var newChatTabs = newCompanions.stream().map(this::createNewChatTab).toList();
 
             for (var newChatTab : newChatTabs) {
-                getUI().ifPresent(ui -> ui.access(() -> tabs.add(newChatTab)));
-                currentChat = newChatTab.chatInfo;
-                tabs.setSelectedTab(newChatTab);
+                getUI().ifPresent(ui -> ui.access(() -> {
+                    tabs.add(newChatTab);
+                    if (tabs.getComponentCount() == 1) {
+                        currentChat = newChatTab.getChatInfo();
+                        tabs.setSelectedTab(newChatTab);
+                    }
+                }));
                 companionsChatTab.put(newChatTab.getChatInfo().getCompanion(), newChatTab);
                 log.debug("Added chat tab with companion: " + newChatTab.getChatInfo().getCompanion());
             }
@@ -178,24 +182,28 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
     private void removeTab(String companion) {
         getUI().ifPresent(ui -> ui.access(() ->
-                {
-                    ChatTab chatTab = companionsChatTab.remove(companion);
-                    if (chatTab == null) {
-                        return;
-                    }
-                    tabs.remove(chatTab);
-                    int countOfChildrenTabs = tabs.getComponentCount();
-                    if (countOfChildrenTabs != 0) {
-                        tabs.setSelectedIndex(0);
-                        currentChat = ((ChatTab) tabs.getTabAt(0)).getChatInfo();
-                        wrapper.showMessages(currentChat.companion);
-                    }
-                    deleteRoom(companion);
-                    chatRepository.removeChat(companion);
-                    filesToSend.remove(companion);
-                }
-        ));
+        {
+            ChatTab chatTab = companionsChatTab.remove(companion);
+            if (chatTab == null) {
+                return;
+            }
+            tabs.remove(chatTab);
+        }));
+
+        if (tabs.getComponentCount() != 0) {
+
+            getUI().ifPresent(ui -> ui.access(() -> {
+                tabs.setSelectedIndex(0);
+                ChatTab selected = (ChatTab) (tabs.getSelectedTab());
+                currentChat = selected.getChatInfo();
+                wrapper.showMessages(currentChat.getCompanion());
+            }));
+        }
+        deleteRoom(companion);
+        chatRepository.removeChat(companion);
+        filesToSend.remove(companion);
     }
+
 
     private void deleteRoom(String companion) {
         if (chatClientService.deleteRoom(companion)) {
@@ -214,8 +222,6 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
         for (var msg : response) {
             if (msg.getFileName().isEmpty()) {
-                // it is a byte arr (not file)
-                // if it is a text, print message to chat
                 var textMsgOp = chatClientService.processByteArrayMessage(msg);
 
                 textMsgOp.ifPresent(s -> wrapper.showTextMessage(s, msg.getSender(), MessagesLayoutScrollerWrapper.Destination.ANOTHER));
@@ -248,8 +254,6 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         this.wrapper = new MessagesLayoutScrollerWrapper(scroller);
 
         var msgInputBtnAddFileContainer = createMessageContainer();
-
-        // todo: add interrupt encryption
 
         chatLayout.add(scroller, msgInputBtnAddFileContainer);
 
@@ -457,8 +461,6 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         Page page = attachEvent.getUI().getPage();
         page.retrieveExtendedClientDetails(details -> setMobile(details.getWindowInnerWidth() < 740));
         page.addBrowserWindowResizeListener(e -> setMobile(e.getWidth() < 740));
-
-        chatClientService.initMessageHandler();
     }
 
     @Override
@@ -557,10 +559,13 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
                         .set("width", "100%")
                         .set("height", "100%");
 
-                VerticalLayout updated = ((VerticalLayout) messagesLayout.getContent());
-                updated.add(imageDiv);
+                if (currentChat.getCompanion().equals(companion)) {
+                    VerticalLayout updated = ((VerticalLayout) messagesLayout.getContent());
+                    updated.add(imageDiv);
 
-                messagesLayout.setContent(updated);
+                    messagesLayout.setContent(updated);
+                }
+
                 chatRepository.putMessage(companion, imageDiv);
             }));
         }
@@ -599,12 +604,14 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
                             .set("border", "1px solid #ddd")
                             .set("flex-shrink", "0");
 
-                    VerticalLayout updated = ((VerticalLayout) messagesLayout.getContent());
-                    updated.add(fileDiv);
+                    if (currentChat.getCompanion().equals(companion)) {
+                        VerticalLayout updated = ((VerticalLayout) messagesLayout.getContent());
+                        updated.add(fileDiv);
 
-                    messagesLayout.setContent(updated);
+                        messagesLayout.setContent(updated);
+                    }
+
                     chatRepository.putMessage(companion, fileDiv);
-                    messagesLayout.getElement().executeJs("this.scrollTo(0, this.scrollHeight);");
                 });
             }
         }

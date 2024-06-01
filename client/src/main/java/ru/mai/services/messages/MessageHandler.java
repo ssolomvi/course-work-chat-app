@@ -12,9 +12,9 @@ import ru.mai.services.ContextsRepository;
 import ru.mai.services.repositories.FilesUnderDownloadRepository;
 import ru.mai.utils.Pair;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
@@ -23,6 +23,7 @@ import java.util.*;
 public class MessageHandler {
     public static final Integer FILE_PAGE_SIZE = 65536;
     private static final Integer FILE_PAGE_SIZE_FOR_ENCRYPTED = (int) (FILE_PAGE_SIZE * 0.1 + FILE_PAGE_SIZE);
+    private static final String FILE_PREFIX = "upload" + File.separator;
     private final ContextsRepository contextsRepository;
     private final FilesUnderDownloadRepository fileUnderDownloadRepository;
     private final KafkaMessageHandler kafkaMessageHandler;
@@ -63,7 +64,6 @@ public class MessageHandler {
         if (encrypted.length <= FILE_PAGE_SIZE_FOR_ENCRYPTED) {
             MessageDto dto = new MessageDto(UUID.randomUUID(), own, "", 1, 0, encrypted);
 
-            log.debug("Sending text msg {} -> {}: {}", own, companion, dto);
             kafkaMessageHandler.sendMessage(companion, dto);
         } else {
             log.error("Big length!");
@@ -145,9 +145,15 @@ public class MessageHandler {
         return Optional.of(decryptedString);
     }
 
+    private String getFileName(String fileName) {
+        return String.format("%s%s", FILE_PREFIX, fileName);
+    }
+
     public Optional<Pair<String, byte[]>> processFileMessage(MessageDto msg) {
+        final String fileName = getFileName(msg.getFileName());
+
         // decrypt part to
-        try (RandomAccessFile rnd = new RandomAccessFile(msg.getFileName(), "rw")) {
+        try (RandomAccessFile rnd = new RandomAccessFile(fileName, "rw")) {
             log.info("File {} opened as RandomAccessFile", msg.getFileName());
             byte[] toWrite = msg.getValue();
             rnd.seek((long) msg.getCurrIndex() * FILE_PAGE_SIZE);
@@ -167,8 +173,6 @@ public class MessageHandler {
                 }
                 fileUnderDownloadRepository.remove(msg.getMessageId());
 
-                String fileName = msg.getFileName();
-
                 EncryptionContext context = op.get();
 
                 byte[] encrypted = readFromRnd(rnd, msg.getNumberOfPartitions());
@@ -176,8 +180,8 @@ public class MessageHandler {
 
                 byte[] decrypted = context.decrypt(encrypted);
 
-                log.debug("Decrypted file {} for {}", fileName, msg.getSender());
-                return Optional.of(new Pair<>(fileName, decrypted));
+                log.debug("Decrypted file {} for {}", msg.getFileName(), msg.getSender());
+                return Optional.of(new Pair<>(msg.getFileName(), decrypted));
             }
 
         } catch (IOException e) {

@@ -1,9 +1,12 @@
 package ru.mai.util;
 
+import com.google.common.math.BigIntegerMath;
 import ru.mai.Algorithm;
 import ru.mai.EncryptionMode;
 import ru.mai.InitRoomResponse;
 import ru.mai.PaddingMode;
+import ru.mai.primality_test.impl.ProbabilisticPrimalityTestSolovayStrassen;
+import ru.mai.utils.MathOperationsBigInteger;
 import ru.mai.utils.Operations;
 import ru.mai.utils.Pair;
 
@@ -29,7 +32,7 @@ public class InitRoomResponseBuilder {
 
         String initVector = new String(Operations.generateBytes(keyAndBlockLength.getValue()));
 
-        String diffieHellmanP = BigInteger.TWO.pow(8 * keyAndBlockLength.getKey()).toString();
+        String diffieHellmanP = MathOperationsBigInteger.generateProbablePrime(8 * keyAndBlockLength.getKey(), new ProbabilisticPrimalityTestSolovayStrassen(), 0.999).toString();
 
         return InitRoomResponse.newBuilder()
                 .setCompanionLogin(companionLogin)

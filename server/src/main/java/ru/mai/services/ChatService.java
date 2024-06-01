@@ -13,7 +13,7 @@ import java.util.List;
 @Slf4j
 @Component
 public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
-    private static final String DIFFIE_HELLMAN_G = "88005553535";
+    private static final String DIFFIE_HELLMAN_G = "17";
     private final ConnectResponse connectResponse = ConnectResponse.newBuilder().setDiffieHellmanG(DIFFIE_HELLMAN_G).build();
     private final ActiveUsersAndConsumersRepository usersRep;
     private final NotifyDisconnectedUsersRepository notifyDisconnectedRep;

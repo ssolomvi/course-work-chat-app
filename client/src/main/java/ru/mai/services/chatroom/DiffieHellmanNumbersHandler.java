@@ -9,7 +9,7 @@ public class DiffieHellmanNumbersHandler {
     private static final int DIFFIE_HELLMAN_NUMBER_SIZE = 50;
 
     public static BigInteger generateMinorNumber() {
-        return new BigInteger(Operations.generateBytes(DiffieHellmanNumbersHandler.DIFFIE_HELLMAN_NUMBER_SIZE));
+        return new BigInteger(Operations.generateBytes(DiffieHellmanNumbersHandler.DIFFIE_HELLMAN_NUMBER_SIZE - 1));
     }
 
     public static BigInteger generateMajorNumber(BigInteger g, BigInteger p, BigInteger minorNumber) {
