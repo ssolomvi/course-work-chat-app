@@ -16,6 +16,7 @@ import ru.mai.services.messages.MessageHandler;
 import ru.mai.utils.Pair;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -131,6 +132,10 @@ public class ChatClientService {
 
     public void sendMessage(String companion, String message) {
         messageHandler.sendByteArray(login, companion, message.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public void sendFile(String companion, String filename, InputStream stream, long fileSize) throws IllegalArgumentException, IOException {
+        messageHandler.sendFile(login, companion, filename, stream, fileSize);
     }
 
     public void sendFile(String companion, String filename, byte[] data) {

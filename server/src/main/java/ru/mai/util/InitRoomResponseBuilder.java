@@ -1,6 +1,5 @@
 package ru.mai.util;
 
-import com.google.common.math.BigIntegerMath;
 import ru.mai.Algorithm;
 import ru.mai.EncryptionMode;
 import ru.mai.InitRoomResponse;
@@ -10,8 +9,6 @@ import ru.mai.utils.MathOperationsBigInteger;
 import ru.mai.utils.Operations;
 import ru.mai.utils.Pair;
 
-import java.math.BigInteger;
-
 public class InitRoomResponseBuilder {
 
     public static Pair<Integer, Integer> getKeyAndBlockLength(Algorithm algorithm) {
@@ -20,8 +17,7 @@ public class InitRoomResponseBuilder {
             case ALGORITHM_RIJNDAEL -> new Pair<>(AlgorithmsConfigs.RIJNDAEL_KEY_LENGTH, AlgorithmsConfigs.RIJNDAEL_BLOCK_LENGTH);
             case ALGORITHM_RC6 -> new Pair<>(AlgorithmsConfigs.RC6_KEY_LENGTH, AlgorithmsConfigs.RC6_BLOCK_LENGTH);
             case ALGORITHM_LOKI97 -> new Pair<>(AlgorithmsConfigs.LOKI97_KEY_LENGTH, AlgorithmsConfigs.LOKI97_BLOCK_LENGTH);
-            // todo:
-//            case ALGORITHM_MARS -> new Pair<>(MARS.KEY_LENGTH16, MARS.BLOCK_LENGTH);
+            case ALGORITHM_MARS -> new Pair<>(AlgorithmsConfigs.MARS_KEY_LENGTH, AlgorithmsConfigs.MARS_BLOCK_LENGTH);
             default -> new Pair<>(AlgorithmsConfigs.DES_KEY_LENGTH, AlgorithmsConfigs.DES_BLOCK_LENGTH);
         };
     }

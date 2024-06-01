@@ -12,9 +12,7 @@ import ru.mai.services.ContextsRepository;
 import ru.mai.services.repositories.FilesUnderDownloadRepository;
 import ru.mai.utils.Pair;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.util.*;
 
 @Slf4j
@@ -23,7 +21,7 @@ import java.util.*;
 public class MessageHandler {
     public static final Integer FILE_PAGE_SIZE = 65536;
     private static final Integer FILE_PAGE_SIZE_FOR_ENCRYPTED = (int) (FILE_PAGE_SIZE * 0.1 + FILE_PAGE_SIZE);
-    private static final String FILE_PREFIX = "upload" + File.separator;
+    private static final String FILE_PREFIX = "download" + File.separator;
     private final ContextsRepository contextsRepository;
     private final FilesUnderDownloadRepository fileUnderDownloadRepository;
     private final KafkaMessageHandler kafkaMessageHandler;
@@ -71,6 +69,23 @@ public class MessageHandler {
         }
     }
 
+    public void sendFile(String own, String companion, String filename, InputStream stream, long fileSize) throws IOException {
+        var op = contextsRepository.get(companion);
+        if (op.isEmpty()) {
+            log.debug("Context for {} not found", companion);
+            throw new IllegalArgumentException(String.format("Context for companion %s not found", companion));
+        }
+
+        var context = op.get();
+
+        int numberOfPartitions = (int) (fileSize / FILE_PAGE_SIZE + (fileSize % FILE_PAGE_SIZE == 0 ? 0 : 1));
+        UUID id = UUID.randomUUID();
+
+        try (stream) {
+
+        }
+    }
+
     public void sendFile(String own, String companion, String filename, byte[] bytes) {
         var op = contextsRepository.get(companion);
         if (op.isEmpty()) {
@@ -95,14 +110,14 @@ public class MessageHandler {
             if (leftoverSize >= FILE_PAGE_SIZE) {
                 arr = new byte[FILE_PAGE_SIZE];
                 System.arraycopy(encrypted, currIndex * FILE_PAGE_SIZE, arr, 0, FILE_PAGE_SIZE);
-            } else if (leftoverSize != 0){
+            } else if (leftoverSize != 0) {
                 arr = new byte[leftoverSize];
                 System.arraycopy(encrypted, currIndex * FILE_PAGE_SIZE, arr, 0, leftoverSize);
             } else {
                 break;
             }
             log.debug("Sent file part to {}", companion);
-            kafkaMessageHandler.sendMessage(companion ,new MessageDto(id, own, filename, numberOfPartitions, currIndex, arr));
+            kafkaMessageHandler.sendMessage(companion, new MessageDto(id, own, filename, numberOfPartitions, currIndex, arr));
         }
     }
 

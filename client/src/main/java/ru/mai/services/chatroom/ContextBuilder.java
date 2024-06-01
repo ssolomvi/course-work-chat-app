@@ -104,8 +104,6 @@ public class ContextBuilder {
     }
 
     private static EncryptionAlgorithm getEncryptionAlgorithm(Algorithm algorithm, byte[] key) {
-        //            case "MARS" : {
-        //                return new MARS();
         return switch (algorithm) {
             case ALGORITHM_DEAL -> {
                 byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.DEAL_KEY_LENGTH);
@@ -123,6 +121,10 @@ public class ContextBuilder {
                 byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.LOKI97_KEY_LENGTH);
                 yield new LOKI97(normalizedKey);
             }
+            case ALGORITHM_MARS -> {
+                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.MARS_KEY_LENGTH);
+                yield new MARS(normalizedKey);
+            }
             default -> {
                 byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.DES_KEY_LENGTH);
                 yield new DES(normalizedKey);
@@ -131,8 +133,6 @@ public class ContextBuilder {
     }
 
     private static EncryptionAlgorithm getEncryptionAlgorithm(String algorithm, byte[] key) {
-        //            case "MARS" : {
-        //                return new MARS();
         return switch (algorithm) {
             case "DEAL" -> {
                 byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.DEAL_KEY_LENGTH);
@@ -149,6 +149,10 @@ public class ContextBuilder {
             case "LOKI97" -> {
                 byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.LOKI97_KEY_LENGTH);
                 yield new LOKI97(normalizedKey);
+            }
+            case "MARS" -> {
+                byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.MARS_KEY_LENGTH);
+                yield new MARS(normalizedKey);
             }
             default -> {
                 byte[] normalizedKey = normalizeKey(key, AlgorithmsConfigs.DES_KEY_LENGTH);

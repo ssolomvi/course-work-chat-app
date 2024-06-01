@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Repository;
 
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +25,7 @@ public class FilesToSendRepository {
         return new LinkedList<>();
     }
 
-    public void put(String companion, String filename, InputStream data, long size) {
+    public void put(String companion, String filename, Path data) {
         List<FilesToSendMetadata> filesToSendMetadata;
         if (filesToSend.containsKey(companion)) {
             filesToSendMetadata = filesToSend.get(companion);
@@ -32,7 +33,7 @@ public class FilesToSendRepository {
             filesToSendMetadata = new LinkedList<>();
         }
 
-        filesToSendMetadata.add(new FilesToSendMetadata(filename, data, size));
+        filesToSendMetadata.add(new FilesToSendMetadata(filename, data));
         filesToSend.put(companion, filesToSendMetadata);
     }
 
@@ -43,13 +44,11 @@ public class FilesToSendRepository {
     @Getter
     public static class FilesToSendMetadata {
         private final String filename;
-        private final InputStream data;
-        private final long size;
+        private final Path data;
 
-        public FilesToSendMetadata(String filename, InputStream data, long size) {
+        public FilesToSendMetadata(String filename, Path data) {
             this.filename = filename;
             this.data = data;
-            this.size = size;
         }
     }
 }

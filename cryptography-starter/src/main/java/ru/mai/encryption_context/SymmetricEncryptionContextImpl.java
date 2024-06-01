@@ -359,24 +359,6 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
         }
     }
 
-    @Override
-    public byte[] encryptPart(byte[] toEncrypt, boolean initAsNew) throws IOException {
-        if (initAsNew && encryptionMode instanceof EncryptionModeWithInitVector encryptionModeWithInitVector) {
-            encryptionModeWithInitVector.invokeNextAsNew();
-        }
-
-        toEncrypt = padInputByteArray(toEncrypt);
-
-        byte[] encrypted;
-        if (encryptionMode instanceof ECB || encryptionMode instanceof EncryptionModeCounter) {
-            encrypted = encryptionMultithreading(toEncrypt);
-        } else {
-            encrypted = encryptThreadTask(toEncrypt, -1);
-        }
-
-        return encrypted;
-    }
-
     /**
      * Encrypts {@code input} accordingly to algorithm, padding mode and encryption mode used in object's constructor
      *
@@ -609,7 +591,6 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
                 outputStream.write(decrypted);
             }
         }
-
     }
 
     @Override

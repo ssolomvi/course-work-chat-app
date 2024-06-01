@@ -13,7 +13,6 @@ public class AlgorithmsConfigs {
     public static final int LOKI97_BLOCK_LENGTH = LOKI97.BLOCK_LENGTH_LOKI97;
     public static final int RC6_KEY_LENGTH = RC6.KEY_LENGTH_RC6_16;
     public static final int RC6_BLOCK_LENGTH = RC6.BLOCK_LENGTH_RC6_16;
-    // todo
-//    public static final int MARS_KEY_LENGTH = ;
-//    public static final int MARS_BLOCK_LENGTH = ;
+    public static final int MARS_KEY_LENGTH = MARS.KEY_LENGTH_MARS_16;
+    public static final int MARS_BLOCK_LENGTH = MARS.BLOCK_LENGTH_MARS;
 }
