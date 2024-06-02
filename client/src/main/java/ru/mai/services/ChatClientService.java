@@ -138,10 +138,6 @@ public class ChatClientService {
         messageHandler.sendFile(login, companion, filename, stream, fileSize);
     }
 
-    public void sendFile(String companion, String filename, byte[] data) {
-        messageHandler.sendFile(login, companion, filename, data);
-    }
-
     public List<MessageDto> checkForMessages() {
         return messageHandler.anyMessages(loginStructure);
     }
@@ -151,9 +147,12 @@ public class ChatClientService {
         return messageHandler.processByteArrayMessage(msg);
     }
 
-
-    public Optional<Pair<String, byte[]>> processFileMessage(MessageDto msg) {
+    public Optional<Pair<String, InputStream>> processFileMessage(MessageDto msg) throws IOException {
         return messageHandler.processFileMessage(msg);
     }
+
+//    public Optional<Pair<String, byte[]>> processFileMessage(MessageDto msg) {
+//        return messageHandler.processFileMessage(msg);
+//    }
 
 }

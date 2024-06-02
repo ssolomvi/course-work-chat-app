@@ -30,7 +30,7 @@ public class MessageDtoSerializer implements Serializer<MessageDto> {
             dos.writeUTF(data.getMessageId().toString());
             dos.writeUTF(data.getSender());
             dos.writeInt(data.getNumberOfPartitions() != null ? data.getNumberOfPartitions() : -1);
-            dos.writeUTF(data.getFileName() != null ? data.getFileName() : "");
+            dos.writeUTF(data.getFilename() != null ? data.getFilename() : "");
             dos.writeInt(data.getCurrIndex() != null ? data.getCurrIndex() : -1);
             dos.write(data.getValue());
         } catch (IOException e) {

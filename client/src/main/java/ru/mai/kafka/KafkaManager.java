@@ -33,7 +33,7 @@ public class KafkaManager {
     private static final Map<String, String> TOPIC_CONFIG = Map.of(TopicConfig.RETENTION_MS_CONFIG, String.valueOf(60 * 1000)); // for a minute
     private static final int WAIT_AT_MOST_SEC = 10;
     private static final String TOPIC_PREFIX = "chat_app_topic";
-    private static final Integer FILE_PAGE_SIZE = 65536;
+    private static final int FILE_PAGE_SIZE = 2 << 18; // 1/4 MB
 
     private static final AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS));
 
@@ -62,7 +62,7 @@ public class KafkaManager {
     }
 
     public static KafkaProducer<String, MessageDto> createKafkaProducer() {
-        int maxRequestSize = FILE_PAGE_SIZE >= 2000 ? FILE_PAGE_SIZE + FILE_PAGE_SIZE / 10 : FILE_PAGE_SIZE + 150;
+        int maxRequestSize = FILE_PAGE_SIZE >= 2000 ? (FILE_PAGE_SIZE + FILE_PAGE_SIZE / 10) : (FILE_PAGE_SIZE + 150);
         String maxRequestSizeConfig = Integer.toString(maxRequestSize);
 
         return new KafkaProducer<>(

@@ -2,15 +2,16 @@ package ru.mai.services.repositories;
 
 import lombok.Getter;
 
+@Getter
 public class FileUnderDownloadMetadata {
-    @Getter
     private final String filename;
-    @Getter
+    private final String tmpFilename;
     private final String companion;
     private int partitionsLeft;
 
-    public FileUnderDownloadMetadata(String filename, String companion, int partitionsCount) {
+    public FileUnderDownloadMetadata(String filename, String tmpFilename, String companion, int partitionsCount) {
         this.filename = filename;
+        this.tmpFilename = tmpFilename;
         this.companion = companion;
         this.partitionsLeft = partitionsCount;
     }

@@ -11,8 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FilesUnderDownloadRepository {
     private final Map<UUID, FileUnderDownloadMetadata> filesUnderDownload = new ConcurrentHashMap<>();
 
-    public void put(UUID id, String filename, String companion, int partitionsCount) {
-        filesUnderDownload.put(id, new FileUnderDownloadMetadata(filename, companion, partitionsCount));
+    public void put(UUID id, String filename, String tmpFilename, String companion, int partitionsCount) {
+        filesUnderDownload.put(id, new FileUnderDownloadMetadata(filename, tmpFilename, companion, partitionsCount));
     }
 
     public boolean contains(UUID id) {
@@ -42,10 +42,22 @@ public class FilesUnderDownloadRepository {
     }
 
     public Optional<String> getFilename(UUID id) {
+        if (!filesUnderDownload.containsKey(id)) {
+            return Optional.empty();
+        }
         return Optional.of(filesUnderDownload.get(id).getFilename());
+    }
+    public Optional<String> getTmpFilename(UUID id) {
+        if (!filesUnderDownload.containsKey(id)) {
+            return Optional.empty();
+        }
+        return Optional.of(filesUnderDownload.get(id).getTmpFilename());
     }
 
     public Optional<String> getCompanion(UUID id) {
+        if (!filesUnderDownload.containsKey(id)) {
+            return Optional.empty();
+        }
         return Optional.of(filesUnderDownload.get(id).getCompanion());
     }
 }

@@ -12,7 +12,7 @@ import java.util.UUID;
 public class MessageDto {
     private UUID messageId; // generated
     private String sender;
-    private String fileName; // if is a file
+    private String filename; // if is a file
     private Integer numberOfPartitions;
     private Integer currIndex;
     private byte[] value; // encrypted data

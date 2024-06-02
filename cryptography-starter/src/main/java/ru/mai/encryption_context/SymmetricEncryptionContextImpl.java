@@ -56,8 +56,8 @@ public class SymmetricEncryptionContextImpl implements EncryptionContext {
     private final int minBlockLengthForThreadForDecryption; // count of blocks * size of block to be decrypted by a single thread
     private final int algorithmBlockLengthForEncryption; // block length to pass in encrypt method
     private final int algorithmBlockLengthForDecryption; // block length to pass in decrypt method
-    private static final int FILE_PAGE_SIZE = 65536;
-    private static final int ONE_THREAD_BLOCK_SIZE = 8192; // size of byte array to pass for one thread to work on
+    private static final int FILE_PAGE_SIZE = 2 << 18; // 1/4 MB
+    private static final int ONE_THREAD_BLOCK_SIZE = 2 << 14; // size of byte array to pass for one thread to work on
     private final int filePageSizeModified;
 
     // region Constructing EncryptionContextAbstract

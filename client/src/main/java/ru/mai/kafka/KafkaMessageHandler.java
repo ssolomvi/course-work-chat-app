@@ -6,12 +6,15 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.errors.InterruptException;
 import org.springframework.context.annotation.Scope;
 import ru.mai.kafka.model.MessageDto;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 @Slf4j
 @SpringComponent
@@ -29,18 +32,18 @@ public class KafkaMessageHandler {
     }
 
     public void sendMessage(String companion, MessageDto message) {
-//        Future<RecordMetadata> response =
+        Future<RecordMetadata> response =
         producer.send(new ProducerRecord<>(KafkaManager.getTopicName(companion), message));
-//        Optional.ofNullable(response).ifPresent(rsp ->
-//                {
-//                    try {
-//                        log.info("Message send: {}: {}", rsp.get(), message);
-//                    } catch (InterruptedException | ExecutionException e) {
-//                        log.error("Error reading response: ", e);
-//                        Thread.currentThread().interrupt();
-//                    }
-//                }
-//        );
+        Optional.ofNullable(response).ifPresent(rsp ->
+                {
+                    try {
+                        log.info("Message send: {} from {} filename {}", rsp.get(), message.getSender(), message.getFilename());
+                    } catch (InterruptedException | ExecutionException e) {
+                        log.error("Error reading response: ", e);
+                        Thread.currentThread().interrupt();
+                    }
+                }
+        );
     }
 
     public Optional<ConsumerRecords<String, MessageDto>> readMessages() {
