@@ -649,6 +649,8 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         } catch (IOException | RuntimeException e) {
             // runtime exception is thrown if encryption context not found
             log.error("I/O exception happened trying to send file, ", e);
+        } catch (InterruptedException e) {
+            log.error("Interrupted exception happened trying to send file", e);
         }
     }
 

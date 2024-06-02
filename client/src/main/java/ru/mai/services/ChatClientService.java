@@ -134,7 +134,7 @@ public class ChatClientService {
         messageHandler.sendByteArray(login, companion, message.getBytes(StandardCharsets.UTF_8));
     }
 
-    public void sendFile(String companion, String filename, InputStream stream, long fileSize) throws IllegalArgumentException, IOException {
+    public void sendFile(String companion, String filename, InputStream stream, long fileSize) throws IllegalArgumentException, IOException, InterruptedException {
         messageHandler.sendFile(login, companion, filename, stream, fileSize);
     }
 

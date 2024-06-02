@@ -16,9 +16,9 @@ import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 @Slf4j
 @SpringComponent
@@ -28,7 +28,7 @@ public class MessageHandler {
     private static final Integer FILE_PAGE_SIZE_FOR_ENCRYPTED = (int) (FILE_PAGE_SIZE * 0.1 + FILE_PAGE_SIZE);
     private static final String FILE_PREFIX_DOWNLOAD = "downloads" + File.separator;
     private static final String FILE_PREFIX_UPLOAD = "uploads" + File.separator;
-    private final ExecutorService fileWriterExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() - 1);
+    private final ExecutorService fileExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() - 1);
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
     private final ContextsRepository contextsRepository;
     private final FilesUnderDownloadRepository fileUnderDownloadRepository;
@@ -77,7 +77,7 @@ public class MessageHandler {
         }
     }
 
-    public void sendFile(String own, String companion, String filename, InputStream in, long fileSize) throws IOException {
+    public void sendFile(String own, String companion, String filename, InputStream in, long fileSize) throws IOException, InterruptedException {
         var op = contextsRepository.get(companion);
         if (op.isEmpty()) {
             log.debug("Context for {} not found", companion);
@@ -97,33 +97,45 @@ public class MessageHandler {
             }
         }
 
-        try (RandomAccessFile encIn = new RandomAccessFile(outFile, "r")) {
-            byte[] buffer;
+        long blockOffset = 0;
+        int currIndex = 0;
+        CountDownLatch countDownLatch = new CountDownLatch(numberOfPartitions);
 
-            if (encIn.length() < FILE_PAGE_SIZE) {
-                buffer = new byte[(int) encIn.length()];
-            } else {
-                buffer = new byte[FILE_PAGE_SIZE];
-            }
+        try {
+            while (blockOffset < fileSize) {
+                long finalBlockOffset = blockOffset;
+                int finalCurrIndex = currIndex;
 
-            if (buffer.length != 0) {
-                int readBytes;
-                int currIndex = 0;
+                fileExecutor.submit(() -> {
+                    byte[] buffer;
+                    try (RandomAccessFile encIn = new RandomAccessFile(outFile, "r")) {
+                        encIn.seek(finalBlockOffset);
+                        if (fileSize - finalBlockOffset < FILE_PAGE_SIZE) {
+                            buffer = new byte[(int) (fileSize - finalBlockOffset)];
+                        } else {
+                            buffer = new byte[FILE_PAGE_SIZE];
+                        }
 
-                while ((readBytes = encIn.read(buffer)) != -1) {
-                    if (readBytes != FILE_PAGE_SIZE) {
-                        byte[] tmp = new byte[readBytes];
-                        System.arraycopy(buffer, 0, tmp, 0, readBytes);
-                        buffer = tmp;
+                        encIn.read(buffer);
+                    } catch (IOException e) {
+                        log.error(e.getMessage(), e);
+                        throw new RuntimeException(e);
                     }
 
-                    kafkaMessageHandler.sendMessage(companion, new MessageDto(id, own, filename, numberOfPartitions, currIndex++, buffer));
-                    log.debug("Sent file part #{} to {}", currIndex - 1, companion);
-                }
-            } else {
-                kafkaMessageHandler.sendMessage(companion, new MessageDto(id, own, filename, 1, 0, buffer));
+                    kafkaMessageHandler.sendMessage(companion, new MessageDto(id, own, filename, numberOfPartitions, finalCurrIndex, buffer));
+                    countDownLatch.countDown();
+                    log.debug("Sent file part {} #{} to {}", filename, finalCurrIndex, companion);
+                });
+
+                ++currIndex;
+                blockOffset += FILE_PAGE_SIZE;
             }
+        } catch (RuntimeException e) {
+            log.debug("Error encrypting and sending file, ", e);
         }
+
+        countDownLatch.await();
+        log.info("Sent file {} to {}", filename, companion);
 
         if (outFile.delete()) {
             log.debug("Deleted tmp file successfully");

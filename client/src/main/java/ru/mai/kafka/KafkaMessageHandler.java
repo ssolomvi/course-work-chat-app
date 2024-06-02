@@ -32,18 +32,18 @@ public class KafkaMessageHandler {
     }
 
     public void sendMessage(String companion, MessageDto message) {
-        Future<RecordMetadata> response =
+//        Future<RecordMetadata> response =
         producer.send(new ProducerRecord<>(KafkaManager.getTopicName(companion), message));
-        Optional.ofNullable(response).ifPresent(rsp ->
-                {
-                    try {
-                        log.info("Message send: {} from {} filename {}", rsp.get(), message.getSender(), message.getFilename());
-                    } catch (InterruptedException | ExecutionException e) {
-                        log.error("Error reading response: ", e);
-                        Thread.currentThread().interrupt();
-                    }
-                }
-        );
+//        Optional.ofNullable(response).ifPresent(rsp ->
+//                {
+//                    try {
+//                        log.info("Message send: {} from {} filename {}", rsp.get(), message.getSender(), message.getFilename());
+//                    } catch (InterruptedException | ExecutionException e) {
+//                        log.error("Error reading response: ", e);
+//                        Thread.currentThread().interrupt();
+//                    }
+//                }
+//        );
     }
 
     public Optional<ConsumerRecords<String, MessageDto>> readMessages() {
