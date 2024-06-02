@@ -20,7 +20,7 @@ public class LOKI97 implements EncryptionAlgorithm {
 
     public LOKI97(byte[] key) {
         int lenKey = key.length;
-        if (!(lenKey == 16 || lenKey == 24|| lenKey == 32)) {
+        if (!(lenKey == 16 || lenKey == 24 || lenKey == 32)) {
             throw new IllegalArgumentExceptionWithLog("LOKI97: Param key must be of size 16, 24 or 32", log);
         }
 

@@ -18,6 +18,7 @@ public class MathOperationsBigInteger {
 
     /**
      * Decrements a BigInteger number
+     *
      * @param number any BigInteger number
      * @return this--
      */
@@ -27,6 +28,7 @@ public class MathOperationsBigInteger {
 
     /**
      * Increments a BigInteger number
+     *
      * @param number any BigInteger number
      * @return this++
      */
@@ -36,6 +38,7 @@ public class MathOperationsBigInteger {
 
     /**
      * Determines whether a BigInteger number is even
+     *
      * @param number any BigInteger number
      * @return {@code true} if and only if n is even
      */
@@ -46,6 +49,7 @@ public class MathOperationsBigInteger {
 
     /**
      * Determines whether a BigInteger number is odd
+     *
      * @param number any BigInteger number
      * @return {@code true} if and only if n is odd
      */
@@ -55,6 +59,7 @@ public class MathOperationsBigInteger {
 
     /**
      * Finds greatest common divisor of two numbers
+     *
      * @param a any BigInteger number
      * @param b any BigInteger number
      * @return gcd(a, b)
@@ -83,6 +88,7 @@ public class MathOperationsBigInteger {
 
     /**
      * Finds Bézout coefficients x, y and gcd(a, b) such that a * x + b * y = gcd(a, b)
+     *
      * @param a any BigInteger number
      * @param b any BigInteger number
      * @return BigInteger[] {gcd, x, y}: a * x + b * y = gcd
@@ -121,11 +127,12 @@ public class MathOperationsBigInteger {
         }
 
         // rPrev = gcd, sPrev and tPrev - Bezu coefficients: a * sPrev + b * tPrev = gcd
-        return new BigInteger[] {rPrev, sPrev, tPrev};
+        return new BigInteger[]{rPrev, sPrev, tPrev};
     }
 
     /**
      * Determines whether a and b are coprime (relative prime)
+     *
      * @param s any BigInteger number
      * @param f any BigInteger number
      * @return {@code true} if and only if gcd(f, s) == 1
@@ -136,6 +143,7 @@ public class MathOperationsBigInteger {
 
     /**
      * Raises number to degree by modulo
+     *
      * @param number any positive BigInteger number
      * @param degree any BigInteger number
      * @param modulo any positive BigInteger number
@@ -179,6 +187,7 @@ public class MathOperationsBigInteger {
 
     /**
      * Counts the Jacobin symbol for a number
+     *
      * @param a is any whole number
      * @param P is any positive odd P
      * @return symbol Jacobi (a/P)
@@ -252,6 +261,7 @@ public class MathOperationsBigInteger {
 
     /**
      * Generates a random number from upperLimit to 0 or 0 to upperLimit
+     *
      * @param upperLimit any BigInteger number
      * @return random BigInteger number between upperLimit and 0 or 0 and upperLimit
      */
@@ -272,6 +282,7 @@ public class MathOperationsBigInteger {
 
     /**
      * Generates a random number from lowerLimit to upperLimit
+     *
      * @param lowerLimit any BigInteger number
      * @param upperLimit any BigInteger number
      * @return random BigInteger number between lowerLimit and upperLimit
@@ -289,8 +300,9 @@ public class MathOperationsBigInteger {
 
     /**
      * Generates a random probable prime number given bitLength and given minProbability
-     * @param bitLength any positive integer
-     * @param test any object of class ProbabilisticPrimalityTest
+     *
+     * @param bitLength      any positive integer
+     * @param test           any object of class ProbabilisticPrimalityTest
      * @param minProbability any double in [0.5; 1)
      * @return random BigInteger number between lowerLimit and upperLimit
      */
@@ -321,6 +333,7 @@ public class MathOperationsBigInteger {
 
     /**
      * Determines (exactly) whether n is a prime number
+     *
      * @param number any BigInteger number
      * @return {@code true} if and only if n is a prime
      */
@@ -350,6 +363,7 @@ public class MathOperationsBigInteger {
 
     /**
      * Determines whether n is a perfect square
+     *
      * @param n any BigInteger number
      * @return {@code true} if and only if n is a perfect square
      */
@@ -446,8 +460,7 @@ public class MathOperationsBigInteger {
                     return false; // then must end 0625 or 5625
                 }
             }
-        }
-        else  {
+        } else {
             if (!n.divide(BigInteger.TEN).remainder(BigInteger.valueOf(4L)).equals(BigInteger.ZERO)) {
                 return false; // (4k)*10 + (1,9)
             }
@@ -458,7 +471,8 @@ public class MathOperationsBigInteger {
 
     /**
      * Converts fraction {@code numerator}/{@code denominator} to continued fraction
-     * @param numerator any non-negative BigInteger
+     *
+     * @param numerator   any non-negative BigInteger
      * @param denominator any positive BigInteger
      * @return ArrayList of BigIntegers with continued fractions coefficients
      * @throws IllegalArgumentException {@code numerator} or {@code denominator} < 0, or {@code denominator} == 0

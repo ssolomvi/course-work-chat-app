@@ -13,7 +13,7 @@ public class ProbabilisticPrimalityTestFermat extends ProbabilisticPrimalityTest
 
     /**
      * Do not need this method for ProbabilisticPrimalityTestFermat
-     * */
+     */
     @Override
     protected void doBeforeCycle(BigInteger number) {
 

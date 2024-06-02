@@ -32,11 +32,11 @@ public class RoundKeyGenerationRijndael implements RoundKeyGeneration {
     }
 
     /**
-     * @param key Rijndael key
-     * @param Nc number of columns in input block
-     * @param Nk number of columns
-     * @param Nn number of rounds
-     * @param SBox SBox for this rijndael's irreducible polynomial
+     * @param key                                  Rijndael key
+     * @param Nc                                   number of columns in input block
+     * @param Nk                                   number of columns
+     * @param Nn                                   number of rounds
+     * @param SBox                                 SBox for this rijndael's irreducible polynomial
      * @param polynomialIrreducibleWithDegreeEIGHT polynomial that must be irreducible in GF(256)
      */
     public RoundKeyGenerationRijndael(byte[] key, int Nc, int Nk, int Nn, byte[] SBox,
@@ -90,6 +90,7 @@ public class RoundKeyGenerationRijndael implements RoundKeyGeneration {
 
     /**
      * Returns {@code byte[(Nn + 1) * Nc][4]} with {@code Nn + 1} round keys
+     *
      * @param key byte[]
      * @return {@code Nn + 1} round keys
      */

@@ -3,7 +3,6 @@ package ru.mai.services;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Repository;
 import ru.mai.encryption_context.EncryptionContext;
-import ru.mai.services.chatroom.ContextBuilder;
 
 import java.util.Map;
 import java.util.Optional;

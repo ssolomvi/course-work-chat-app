@@ -10,7 +10,7 @@ service ChatService {
     rpc Connect (Login) returns (ConnectResponse);
     rpc Disconnect (Login) returns (Status);
 
-    rpc CheckDisconnect(Login) returns (stream Login);
+    rpc CheckDisconnect (Login) returns (stream Login);
 
     /*  -------------------------------- INIT / DELETE CHAT ROOM -------------------------------- */
     rpc InitRoom (InitRoomRequest) returns (InitRoomResponse);

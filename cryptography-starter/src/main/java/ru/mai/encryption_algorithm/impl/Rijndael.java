@@ -26,9 +26,10 @@ public class Rijndael implements EncryptionAlgorithm {
 
     /**
      * Rijndael constructor.
-     * @param key byte[] with size 16, 24 or 32.
+     *
+     * @param key                                  byte[] with size 16, 24 or 32.
      * @param polynomialIrreducibleWithDegreeEIGHT byte with a binary polynomial that must be irreducible.
-     * @param lenBlock length of encryption/decryption input block; can be changed later.
+     * @param lenBlock                             length of encryption/decryption input block; can be changed later.
      */
     public Rijndael(byte[] key, byte polynomialIrreducibleWithDegreeEIGHT, int lenBlock) {
         int lenKey = key.length;
@@ -137,6 +138,7 @@ public class Rijndael implements EncryptionAlgorithm {
     /**
      * The SubBytes transformation is a non-linear byte substitution that acts on every byte of
      * the state in isolation to produce a new byte value using an S-box substitution table
+     *
      * @param state byte[4 * Nc].
      */
     private void byteSub(byte[] state) {
@@ -182,6 +184,7 @@ public class Rijndael implements EncryptionAlgorithm {
     /**
      * The ShiftRows transformation operates individually on each of the last three rows of the
      * state by cyclically shifting the bytes in the row with specially rule.
+     *
      * @param state byte[4 * Nc].
      */
     private void shiftRow(byte[] state) {
@@ -228,6 +231,7 @@ public class Rijndael implements EncryptionAlgorithm {
      * In mixColumn, the columns of the state are considered as polynomials over GF(2^8) and multiplied modulo
      * x^4 + 1 with a fixed polynomial c(x): = ‘03’ x^3 + ‘01’ x^2 + ‘01’ x + ‘02’ .
      * The inverse to c(x): d(x ) = ‘0B’ x^3 + ‘0D’ x^2 + ‘09’ x + ‘0E’ .
+     *
      * @param state byte[4 * Nc].
      */
     private void mixColumns(byte[] state) {
@@ -266,6 +270,7 @@ public class Rijndael implements EncryptionAlgorithm {
     /**
      * In the xorRoundKey transformation Nc words from the key schedule (the round key
      * described later) are each added (XOR’d) into the columns of the state.
+     *
      * @param state byte[4 * Nc].
      * @param round current round number (from 0).
      * @return state ^= roundKeys[round].

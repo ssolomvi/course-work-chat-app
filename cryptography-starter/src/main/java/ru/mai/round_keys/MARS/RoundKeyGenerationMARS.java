@@ -10,17 +10,20 @@ import ru.mai.utils.Operations;
 public class RoundKeyGenerationMARS implements RoundKeyGeneration {
     static final Logger log = LoggerFactory.getLogger(RoundKeyGenerationMARS.class);
 
-    private static int generateMask(int x){
+    private static int generateMask(int x) {
         int m;
 
-        m = (~x ^ (x>>>1)) & 0x7fffffff;
+        m = (~x ^ (x >>> 1)) & 0x7fffffff;
         m &= (m >> 1) & (m >> 2);
         m &= (m >> 3) & (m >> 6);
 
         if (m == 0)
             return 0;
 
-        m <<= 1; m |= (m << 1); m |= (m << 2); m |= (m << 4);
+        m <<= 1;
+        m |= (m << 1);
+        m |= (m << 2);
+        m |= (m << 4);
 
         m |= (m << 1) & ~x & 0x80000000;
 

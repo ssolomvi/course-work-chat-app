@@ -13,23 +13,22 @@ import ru.mai.services.repositories.FilesUnderDownloadRepository;
 import ru.mai.utils.Pair;
 
 import java.io.*;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static ru.mai.config.ClientConstants.FILE_PAGE_SIZE;
+
 @Slf4j
 @SpringComponent
 @Scope("prototype")
 public class MessageHandler {
-    public static final Integer FILE_PAGE_SIZE = 2 << 18; // 1/4 MB
     private static final Integer FILE_PAGE_SIZE_FOR_ENCRYPTED = (int) (FILE_PAGE_SIZE * 0.1 + FILE_PAGE_SIZE);
     private static final String FILE_PREFIX_DOWNLOAD = "downloads" + File.separator;
     private static final String FILE_PREFIX_UPLOAD = "uploads" + File.separator;
-    private final ExecutorService fileExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() - 1);
-    private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
+    private final ExecutorService fileExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 2);
     private final ContextsRepository contextsRepository;
     private final FilesUnderDownloadRepository fileUnderDownloadRepository;
     private final KafkaMessageHandler kafkaMessageHandler;
@@ -54,7 +53,7 @@ public class MessageHandler {
 
     public void remove(String companion) {
         contextsRepository.remove(companion);
-        fileUnderDownloadRepository.remove(companion);
+        fileUnderDownloadRepository.removeBySender(companion);
     }
 
     public void sendByteArray(String own, String companion, byte[] arr) {
@@ -78,6 +77,11 @@ public class MessageHandler {
     }
 
     public void sendFile(String own, String companion, String filename, InputStream in, long fileSize) throws IOException, InterruptedException {
+        if (in.available() == 0) {
+            kafkaMessageHandler.sendMessage(companion, new MessageDto(UUID.randomUUID(), own, filename, 1, 0, new byte[0]));
+            return;
+        }
+
         var op = contextsRepository.get(companion);
         if (op.isEmpty()) {
             log.debug("Context for {} not found", companion);
@@ -89,7 +93,7 @@ public class MessageHandler {
         int numberOfPartitions = (int) (fileSize / FILE_PAGE_SIZE + (fileSize % FILE_PAGE_SIZE == 0 ? 0 : 1));
         UUID id = UUID.randomUUID();
 
-        File outFile = new File(String.format("%s%s%s", FILE_PREFIX_UPLOAD, LocalDateTime.now().format(formatter), filename)); // encrypted file
+        File outFile = new File(String.format("%s%s%s", FILE_PREFIX_UPLOAD, System.currentTimeMillis(), filename)); // encrypted file
 
         try (in) {
             try (FileOutputStream out = new FileOutputStream(outFile)) {
@@ -101,8 +105,12 @@ public class MessageHandler {
         int currIndex = 0;
         CountDownLatch countDownLatch = new CountDownLatch(numberOfPartitions);
 
+        final long encryptedFileSize = Files.size(outFile.toPath());
+
+        log.debug("Sending file {} of size {}", filename, Files.size(outFile.toPath()));
+
         try {
-            while (blockOffset < fileSize) {
+            while (blockOffset < encryptedFileSize) {
                 long finalBlockOffset = blockOffset;
                 int finalCurrIndex = currIndex;
 
@@ -110,8 +118,8 @@ public class MessageHandler {
                     byte[] buffer;
                     try (RandomAccessFile encIn = new RandomAccessFile(outFile, "r")) {
                         encIn.seek(finalBlockOffset);
-                        if (fileSize - finalBlockOffset < FILE_PAGE_SIZE) {
-                            buffer = new byte[(int) (fileSize - finalBlockOffset)];
+                        if (encryptedFileSize - finalBlockOffset < FILE_PAGE_SIZE) {
+                            buffer = new byte[(int) (encryptedFileSize - finalBlockOffset)];
                         } else {
                             buffer = new byte[FILE_PAGE_SIZE];
                         }
@@ -124,7 +132,7 @@ public class MessageHandler {
 
                     kafkaMessageHandler.sendMessage(companion, new MessageDto(id, own, filename, numberOfPartitions, finalCurrIndex, buffer));
                     countDownLatch.countDown();
-                    log.debug("Sent file part {} #{} to {}", filename, finalCurrIndex, companion);
+                    log.debug("Sent file part {} #{} of size {} to {}", filename, finalCurrIndex, buffer.length, companion);
                 });
 
                 ++currIndex;
@@ -132,15 +140,20 @@ public class MessageHandler {
             }
         } catch (RuntimeException e) {
             log.debug("Error encrypting and sending file, ", e);
+            deleteFileWithLog(outFile);
         }
 
         countDownLatch.await();
         log.info("Sent file {} to {}", filename, companion);
 
-        if (outFile.delete()) {
-            log.debug("Deleted tmp file successfully");
+        deleteFileWithLog(outFile);
+    }
+
+    private void deleteFileWithLog(File file) {
+        if (file.delete()) {
+            log.debug("Deleted file {} successfully", file.getAbsoluteFile());
         } else {
-            log.debug("Error deleting tmp file");
+            log.debug("Error deleting file {}", file.getAbsoluteFile());
         }
     }
 
@@ -156,10 +169,6 @@ public class MessageHandler {
 
         for (var message : read) {
             messages.add(message.value());
-            if (!message.value().getFilename().isEmpty()) {
-                log.debug("Got message: sender {} : filename {} : partitions {} : current {}", message.value().getSender(), message.value().getFilename(),
-                        message.value().getNumberOfPartitions(), message.value().getCurrIndex());
-            }
         }
 
         return messages;
@@ -186,20 +195,21 @@ public class MessageHandler {
         return String.format("%s%s", FILE_PREFIX_DOWNLOAD, fileName);
     }
 
-    public Optional<Pair<String, InputStream>> processFileMessage(MessageDto msg) throws IOException {
+
+    /**
+     * Writes file part to corresponding tmp file and decrypts it if all parts are received
+     *
+     * @param msg file part
+     * @return empty optional, if not all parts are received; a pair of sender and a pair of filename and input stream to
+     * decrytpted file
+     * @throws IOException if an I/O error occurs
+     */
+    public Optional<Pair<String, Pair<String, InputStream>>> processFileMessage(MessageDto msg) throws IOException {
         final UUID messageId = msg.getMessageId();
         final String filename = msg.getFilename();
         final String sender = msg.getSender();
 
-        final String downloadFilename;
-        Optional<String> downloadFilenameOp = fileUnderDownloadRepository.getTmpFilename(messageId);
-        if (downloadFilenameOp.isEmpty()) {
-            String tmpFilename = String.format("%s%s", filename, LocalDateTime.now().format(formatter));
-            downloadFilename = getFilenameWithDownloadDirectory(tmpFilename);
-            fileUnderDownloadRepository.put(messageId, filename, downloadFilename, sender, msg.getNumberOfPartitions());
-        } else {
-            downloadFilename = downloadFilenameOp.get();
-        }
+        String downloadFilename = fileUnderDownloadRepository.getTmpFilename(sender, messageId, filename);
 
         // write part to download file (the part is encrypted)
         try (RandomAccessFile rnd = new RandomAccessFile(downloadFilename, "rw")) {
@@ -207,23 +217,30 @@ public class MessageHandler {
             rnd.write(msg.getValue());
         }
 
-        fileUnderDownloadRepository.decrementPartitionsLeft(messageId);
-
-        if (!fileUnderDownloadRepository.isFinished(messageId)) {
+        if (fileUnderDownloadRepository.incrementAndGetPartsSent(messageId) != msg.getNumberOfPartitions()) {
             return Optional.empty();
         }
+
+        fileUnderDownloadRepository.remove(messageId);
+
+        File toDecryptFile = new File(downloadFilename);
 
         var contextOp = contextsRepository.get(sender);
         if (contextOp.isEmpty()) {
             // todo: better throw custom exception
             log.warn("Error trying to decrypt file {} for {} : no encryption context", msg.getFilename(), msg.getSender());
+            deleteFileWithLog(toDecryptFile);
             return Optional.empty();
         }
 
         var context = contextOp.get();
 
-        File toDecryptFile = new File(downloadFilename);
         File decryptedFile = new File(getFilenameWithDownloadDirectory(filename));
+
+        if (Files.size(toDecryptFile.toPath()) == 0) {
+            deleteFileWithLog(toDecryptFile);
+            return Optional.of(new Pair<>(sender, new Pair<>(filename, new ByteArrayInputStream(new byte[0]))));
+        }
 
         try (FileInputStream in = new FileInputStream(toDecryptFile)) {
             try (FileOutputStream out = new FileOutputStream(decryptedFile)) {
@@ -231,13 +248,9 @@ public class MessageHandler {
             }
         }
 
-        if (toDecryptFile.delete()) {
-            log.debug("Deleted tmp file successfully");
-        } else {
-            log.warn("Failed to delete tmp file");
-        }
+        deleteFileWithLog(toDecryptFile);
 
-        return Optional.of(new Pair<>(filename, new FileInputStream(decryptedFile)));
+        return Optional.of(new Pair<>(sender, new Pair<>(filename, new FileInputStream(decryptedFile))));
     }
 
     public void close() {

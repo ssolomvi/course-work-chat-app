@@ -4,6 +4,7 @@ import java.io.Serializable;
 
 /**
  * Pair for K
+ *
  * @param <D>
  */
 public class CustomPair<D> implements Serializable {
@@ -15,9 +16,12 @@ public class CustomPair<D> implements Serializable {
 
     /**
      * Gets the key for this pair.
+     *
      * @return key for this pair
      */
-    public D getKey() { return key; }
+    public D getKey() {
+        return key;
+    }
 
     /**
      * Value of this <code>Pair</code>.
@@ -26,13 +30,17 @@ public class CustomPair<D> implements Serializable {
 
     /**
      * Gets the value for this pair.
+     *
      * @return value for this pair
      */
-    public D getValue() { return value; }
+    public D getValue() {
+        return value;
+    }
 
     /**
      * Creates a new pair
-     * @param key The key for this pair
+     *
+     * @param key   The key for this pair
      * @param value The value to use for this pair
      */
     public CustomPair(D key, D value) {
@@ -46,7 +54,7 @@ public class CustomPair<D> implements Serializable {
      *
      * <p>The default name/value delimiter '=' is always used.</p>
      *
-     *  @return <code>String</code> representation of this <code>Pair</code>
+     * @return <code>String</code> representation of this <code>Pair</code>
      */
     @Override
     public String toString() {
@@ -79,7 +87,7 @@ public class CustomPair<D> implements Serializable {
      * both the names and values are equal.</p>
      *
      * @param o the <code>Object</code> to test for
-     * equality with this <code>Pair</code>
+     *          equality with this <code>Pair</code>
      * @return <code>true</code> if the given <code>Object</code> is
      * equal to this <code>Pair</code> else <code>false</code>
      */

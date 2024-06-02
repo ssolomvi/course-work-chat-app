@@ -23,6 +23,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static ru.mai.config.ClientConstants.FILE_PAGE_SIZE;
+
 @Slf4j
 public class KafkaManager {
     private static final String BOOTSTRAP_SERVERS = "localhost:9092";
@@ -33,8 +35,6 @@ public class KafkaManager {
     private static final Map<String, String> TOPIC_CONFIG = Map.of(TopicConfig.RETENTION_MS_CONFIG, String.valueOf(60 * 1000)); // for a minute
     private static final int WAIT_AT_MOST_SEC = 10;
     private static final String TOPIC_PREFIX = "chat_app_topic";
-    private static final int FILE_PAGE_SIZE = 2 << 18; // 1/4 MB
-
     private static final AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS));
 
     public static String getTopicName(String userLogin) {
@@ -46,7 +46,7 @@ public class KafkaManager {
         KafkaConsumer<String, MessageDto> consumer = new KafkaConsumer<>(
                 Map.of(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS,
                         ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID_CONFIG,
-//                        ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 50,
+                        ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, (1 << 20) * 50,
                         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, AUTO_OFFSET_RESET),
                 new StringDeserializer(),
                 new MessageDtoDeserializer()
@@ -63,6 +63,7 @@ public class KafkaManager {
 
     public static KafkaProducer<String, MessageDto> createKafkaProducer() {
         int maxRequestSize = FILE_PAGE_SIZE >= 2000 ? (FILE_PAGE_SIZE + FILE_PAGE_SIZE / 10) : (FILE_PAGE_SIZE + 150);
+        log.debug("Max request size is {}", maxRequestSize);
         String maxRequestSizeConfig = Integer.toString(maxRequestSize);
 
         return new KafkaProducer<>(

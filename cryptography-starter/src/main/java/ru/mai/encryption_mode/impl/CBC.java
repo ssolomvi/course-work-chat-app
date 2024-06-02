@@ -10,7 +10,7 @@ import ru.mai.utils.Operations;
 
 /**
  * Cipher Block Chaining is one of the encryption modes for a symmetric block cipher using a feedback mechanism.
- * */
+ */
 public class CBC extends EncryptionModeAbstract implements EncryptionModePreviousNeeded {
     private static final Logger log = LoggerFactory.getLogger(CBC.class);
 
@@ -27,7 +27,7 @@ public class CBC extends EncryptionModeAbstract implements EncryptionModePreviou
      * C_0 = IV
      * <p>
      * C_i = E(P_i xor C_i-1)
-     * */
+     */
     @Override
     public byte[] encrypt(byte[] input) {
         if (input.length % getAlgorithmBlockForEncryption() != 0) {
@@ -74,7 +74,7 @@ public class CBC extends EncryptionModeAbstract implements EncryptionModePreviou
      * C_0 = IV
      * <p>
      * P_i = D(C_i) xor C_i-1
-     * */
+     */
     @Override
     public byte[] decrypt(byte[] curr, byte[] prev) {
         // if invoked as new and no iteration has been done, use previousDecrypted instead of prev

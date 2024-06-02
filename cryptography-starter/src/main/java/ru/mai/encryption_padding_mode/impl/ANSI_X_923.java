@@ -9,7 +9,7 @@ public class ANSI_X_923 extends PaddingModeAbstract {
 
     /**
      * Adds bytes up to length of input will have size needed as a delimeter
-     * */
+     */
     @Override
     public byte[] pad(byte[] input) {
         int inputSize = input.length;

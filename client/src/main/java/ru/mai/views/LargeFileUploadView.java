@@ -4,7 +4,6 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.upload.SucceededEvent;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.receivers.FileBuffer;
 import com.vaadin.flow.router.Route;
@@ -13,7 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -86,14 +84,14 @@ public class LargeFileUploadView extends Div {
      */
 //    private OutputStream receiveUpload(String fileName, String mimeType) {
 
-        // clear old errors for better user experience
+    // clear old errors for better user experience
 //        setInvalid(false);
 
-        // create new value bean to store the data
+    // create new value bean to store the data
 //        log.debug("File name: {}", fileName);
 //        log.debug("Mime type: {}", mimeType);
 
-        // set up receiving Stream
+    // set up receiving Stream
 //        outputStream = new ByteArrayOutputStream();
 //        return outputStream;
 //    }
@@ -103,18 +101,18 @@ public class LargeFileUploadView extends Div {
      */
 //    private void uploadSuccess(SucceededEvent e) {
 
-        // store the binary data into our bean
+    // store the binary data into our bean
 //        value.setImage(outputStream.toByteArray());
 
-        // fire value changes so that Binder can do its thing
+    // fire value changes so that Binder can do its thing
 //        setModelValue(value, true);
 
-        // show the new image
+    // show the new image
 //        updateImage();
 
-        // clear the upload component 'finished files' list for a cleaner appearance.
-        // there is yet no API for it on the server side, see
-        // https://github.com/vaadin/vaadin-upload-flow/issues/96
+    // clear the upload component 'finished files' list for a cleaner appearance.
+    // there is yet no API for it on the server side, see
+    // https://github.com/vaadin/vaadin-upload-flow/issues/96
 //        upload.getElement().executeJs("this.files=[]");
 //    }
 

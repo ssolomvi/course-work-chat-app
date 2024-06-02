@@ -251,7 +251,7 @@ public class Operations {
         return generatedArray;
     }
 
-    public static byte[] mergeByteArrays (byte[] leftArray, byte[] rightArray) {
+    public static byte[] mergeByteArrays(byte[] leftArray, byte[] rightArray) {
         int leftSize = leftArray.length;
         int rightSize = rightArray.length;
 
@@ -272,6 +272,7 @@ public class Operations {
 
         return -1;
     }
+
     public static int getOldestSetBit(short number) {
         for (int i = 15; i >= 0; i--) {
             if (((number >> i) & 1) == 1) {
@@ -355,7 +356,7 @@ public class Operations {
     public static byte[] longToBytes(long l) {
         byte[] result = new byte[8];
         for (int i = 7; i >= 0; i--) {
-            result[i] = (byte)(l & 0xFF);
+            result[i] = (byte) (l & 0xFF);
             l >>= 8;
         }
 
@@ -374,7 +375,7 @@ public class Operations {
                 ((arr[3] & 0xFFL) << 32) |
                 ((arr[4] & 0xFFL) << 24) |
                 ((arr[5] & 0xFFL) << 16) |
-                ((arr[6] & 0xFFL) <<  8) |
+                ((arr[6] & 0xFFL) << 8) |
                 ((arr[7] & 0xFFL));
     }
 
@@ -436,7 +437,7 @@ public class Operations {
         BigInteger resultBigInteger = numberArr.add(number);
         resultBigInteger = resultBigInteger.remainder(powTwo64);
 
-        return  modifyArrayAfterOperation(resultBigInteger.toByteArray(), arrLength);
+        return modifyArrayAfterOperation(resultBigInteger.toByteArray(), arrLength);
     }
 
     // endregion
@@ -445,7 +446,7 @@ public class Operations {
     public static byte[] intToBytes(int i) {
         byte[] result = new byte[4];
         for (int j = 3; j >= 0; j--) {
-            result[j] = (byte)(i & 0xFF);
+            result[j] = (byte) (i & 0xFF);
             i >>= 8;
         }
 
@@ -460,7 +461,7 @@ public class Operations {
 
         return ((arr[0] & 0xFF) << 24) |
                 ((arr[1] & 0xFF) << 16) |
-                ((arr[2] & 0xFF) <<  8) |
+                ((arr[2] & 0xFF) << 8) |
                 ((arr[3] & 0xFF));
     }
 
@@ -518,7 +519,7 @@ public class Operations {
         int arrLength = arr1.length;
 
         long number1 = bytesArrToInt(arr1) & 0xffffffffL;
-        long number2 = bytesArrToInt(arr2)& 0xffffffffL;
+        long number2 = bytesArrToInt(arr2) & 0xffffffffL;
 
         long resultLong = number1 * number2;
         resultLong %= 4294967296L;
@@ -541,8 +542,9 @@ public class Operations {
     }
 
     public static int cyclicShiftRightInt(int val, int pas) {
-        return (val >>> pas) | (val << (32-pas));
+        return (val >>> pas) | (val << (32 - pas));
     }
+
     public static int cyclicShiftLeftInt(int val, int pas) {
         return (val << pas) | (val >>> (32 - pas));
     }
@@ -550,8 +552,7 @@ public class Operations {
     public static byte[] reverseByteArray(byte[] arr) {
         byte[] result = arr.clone();
 
-        for (int i = 0; i < arr.length / 2; i++)
-        {
+        for (int i = 0; i < arr.length / 2; i++) {
             byte temp = result[i];
             result[i] = result[arr.length - i - 1];
             result[arr.length - i - 1] = temp;
@@ -576,6 +577,7 @@ public class Operations {
 
         return result;
     }
+
     public static byte[] and(byte[] arr1, byte[] arr2) {
         if (arr1.length != arr2.length) {
             throw new IllegalArgumentExceptionWithLog("and: Params arr1 and arr2 " +
@@ -586,11 +588,12 @@ public class Operations {
         byte[] result = new byte[arrLength];
 
         for (int i = 0; i < arrLength; i++) {
-            result[i] = (byte) (arr1[i] & 0xff & arr2[i] );
+            result[i] = (byte) (arr1[i] & 0xff & arr2[i]);
         }
 
         return result;
     }
+
     public static byte[] or(byte[] arr1, byte[] arr2) {
         if (arr1.length != arr2.length) {
             throw new IllegalArgumentExceptionWithLog("or: Params arr1 and arr2 " +

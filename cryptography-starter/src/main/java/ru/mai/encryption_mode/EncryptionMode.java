@@ -3,6 +3,7 @@ package ru.mai.encryption_mode;
 public interface EncryptionMode {
     /**
      * Encrypts array of bytes according to chosen algorithm.
+     *
      * @param input Array of bytes to encrypt, its length must be multiple of {@code getAlgorithmBlock()}
      * @return Encrypted array of bytes
      */
@@ -10,6 +11,7 @@ public interface EncryptionMode {
 
     /**
      * Decrypts array of bytes according to chosen algorithm.
+     *
      * @param input Array of bytes to decrypt, its length must be multiple of {@code getAlgorithmBlock()}
      * @return Decrypted array of bytes
      */

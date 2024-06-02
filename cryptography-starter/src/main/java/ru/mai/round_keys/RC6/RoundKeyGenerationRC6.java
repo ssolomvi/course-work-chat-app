@@ -3,7 +3,6 @@ package ru.mai.round_keys.RC6;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.mai.encryption_algorithm.impl.RC6;
-import ru.mai.round_keys.LOKI97.RoundKeyGenerationLOKI97;
 import ru.mai.round_keys.RoundKeyGeneration;
 import ru.mai.utils.Operations;
 

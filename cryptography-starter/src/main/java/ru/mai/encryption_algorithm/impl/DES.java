@@ -21,7 +21,8 @@ public class DES extends EncryptionAlgorithmForDESAndDEAL {
 
     /**
      * Creates a new instance of class DES with modified count of rounds
-     * @param key array of bytes used for creating round keys. Must be of length 7.
+     *
+     * @param key        array of bytes used for creating round keys. Must be of length 7.
      * @param roundCount count of round for Feistel Cipher
      */
     public DES(byte[] key, int roundCount) {
@@ -40,6 +41,7 @@ public class DES extends EncryptionAlgorithmForDESAndDEAL {
 
     /**
      * Creates a new instance of class DES with modified count of rounds
+     *
      * @param key array of bytes used for creating round keys. Must be of length 7.
      */
     public DES(byte[] key) {
@@ -60,6 +62,7 @@ public class DES extends EncryptionAlgorithmForDESAndDEAL {
      * 3. Use FeistelCipherImpl with EncryptionConversionFeistelFunction && RoundKeyGenerationDES
      * <p>
      * 4. Make initial^(-1) permutation {IP^(-1)}
+     *
      * @param input array of bytes of size {@code BLOCK_SIZE = 8}
      * @return Encoded input of size {@code BLOCK_SIZE = 8}
      */

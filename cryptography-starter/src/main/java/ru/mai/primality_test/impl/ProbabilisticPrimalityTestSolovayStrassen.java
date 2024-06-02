@@ -9,13 +9,14 @@ public class ProbabilisticPrimalityTestSolovayStrassen extends ProbabilisticPrim
 
     private BigInteger numberDecremented = BigInteger.ZERO;
     private BigInteger halfNumberDecremented = BigInteger.ZERO;
+
     public ProbabilisticPrimalityTestSolovayStrassen() {
         this.constantProbability = 0.5;
     }
 
     @Override
     protected void doBeforeCycle(BigInteger number) {
-        numberDecremented  = MathOperationsBigInteger.decrement(number);
+        numberDecremented = MathOperationsBigInteger.decrement(number);
         halfNumberDecremented = numberDecremented.divide(BigInteger.TWO);
     }
 

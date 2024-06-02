@@ -9,6 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
+
 public class ProbabilisticPrimalityTestsTest {
     @Test
     public void testProbabilisticPrimalityTests() {
@@ -18,7 +19,7 @@ public class ProbabilisticPrimalityTestsTest {
         int countNumber = 100;
         double minProbability = 0.99999;
 
-         try (FileWriter outputFile = new FileWriter("src/test/resources/testProbabilisticPrimalityTests.txt")) {
+        try (FileWriter outputFile = new FileWriter("src/test/resources/testProbabilisticPrimalityTests.txt")) {
             oneProbabilisticPrimalityTest(testFermat, countNumber, minProbability, outputFile);
             oneProbabilisticPrimalityTest(testMillerRabin, countNumber, minProbability, outputFile);
             oneProbabilisticPrimalityTest(testSolovayStrassen, countNumber, minProbability, outputFile);

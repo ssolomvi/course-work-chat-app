@@ -28,23 +28,28 @@ import com.vaadin.flow.theme.lumo.LumoUtility.Padding;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import ru.mai.kafka.model.MessageDto;
 import ru.mai.services.ChatClientService;
 import ru.mai.utils.Pair;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+
+import static ru.mai.config.ClientConstants.FILE_PAGE_SIZE;
 
 @Slf4j
 @PageTitle("Chat-rooms")
 @Route(value = "chat")
 public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<String> {
     private final HashMap<String, ChatTab> companionsChatTab = new HashMap<>();
-    private final ScheduledExecutorService scheduled = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService scheduledForPingingServer = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService scheduledForPingingConsumer = Executors.newSingleThreadScheduledExecutor();
+    private final ExecutorService executorForFileDownloading = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 2);
     private final Aside aside;
     private final ChatClientService chatClientService; // for server communication
     private final ChatRepository chatRepository; // for depicting objects for chat
@@ -53,15 +58,11 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
     private String login;
     private ChatInfo currentChat;
     private Tabs tabs;
-    private static final int FILE_PAGE_SIZE = 2 << 18; // 1/4 MB
 
     @Override
     public void setParameter(BeforeEvent event, @WildcardParameter String parameter) {
         Notification.show(String.format("Hello, %s!", parameter), 3000, Notification.Position.BOTTOM_END);
         this.login = parameter;
-        chatClientService.setLogin(parameter);
-        pingServer(parameter);
-        chatClientService.connect();
     }
 
     @Override
@@ -71,8 +72,13 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         page.addBrowserWindowResizeListener(e -> setMobile(e.getWidth() < 740));
 
         getUI().ifPresent(ui -> {
-            ((HorizontalLayout) aside.getComponentAt(0)).add(new Icon("vaadin", "paperplane"));
+            ((HorizontalLayout) aside.getComponentAt(0)).add(new Icon("vaadin", "user-heart"));
             ((HorizontalLayout) aside.getComponentAt(0)).add(login);
+
+            chatClientService.setLogin(login);
+            chatClientService.connect();
+            pingServer(login);
+            pingConsumer();
         });
     }
 
@@ -80,7 +86,8 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
     protected void onDetach(DetachEvent detachEvent) {
         log.debug("onDetach");
         chatClientService.disconnect();
-        scheduled.shutdownNow();
+        scheduledForPingingServer.shutdownNow();
+        scheduledForPingingConsumer.shutdownNow();
     }
 
     @Getter
@@ -386,6 +393,7 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
                 String detailError = "No chat selected";
                 Notification.show(detailError, 5000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_WARNING);
                 fireEvent(new FileRejectedEvent(upload, detailError));
+                return;
             }
             // Get information about the uploaded file
             String fileName = event.getFileName();
@@ -428,7 +436,7 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
         Select<String> selectAlgorithm = new Select<>();
         selectAlgorithm.setLabel("Algorithm:");
-        selectAlgorithm.setItems("LOKI97", "MARS", "RC6", "DES", "DEAL", "Rijndael", "RSA");
+        selectAlgorithm.setItems("LOKI97", "MARS", "RC6", "DES", "DEAL", "Rijndael");
         selectAlgorithm.setValue("LOKI97");
 
         Button submit = new Button("Submit", e -> {
@@ -473,7 +481,7 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
     private void pingServer(String user) {
         log.debug("{}: start pinging server", user);
-        scheduled.scheduleAtFixedRate(
+        scheduledForPingingServer.scheduleAtFixedRate(
                 () -> {
                     checkForDisconnectedCompanions();
 
@@ -482,13 +490,18 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
                     checkForDeleteRoomRequest();
 
                     checkForDiffieHellmanNumbers();
+                },
+                0, 3, TimeUnit.SECONDS
+        );
+    }
 
+    private void pingConsumer() {
+        scheduledForPingingConsumer.scheduleAtFixedRate(() -> {
                     if (tabs.getComponentCount() != 0) {
                         checkForMessages();
                     }
                 },
-                0, 3, TimeUnit.SECONDS
-        );
+                0, 1, TimeUnit.SECONDS);
     }
 
     private void checkForDisconnectedCompanions() {
@@ -593,32 +606,44 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         if (response.isEmpty()) {
             return;
         }
+        log.debug("Got {} records", response.size());
 
-        for (var msg : response) {
-            if (msg.getFilename().isEmpty()) {
-                var textMsgOp = chatClientService.processByteArrayMessage(msg);
+        List<MessageDto> textMessages = response.stream().filter(messageDto -> messageDto.getFilename().isEmpty()).toList();
+        List<MessageDto> fileMessages = response.stream().filter(messageDto -> !messageDto.getFilename().isEmpty()).toList();
 
-                textMsgOp.ifPresent(s -> wrapper.showTextMessage(s, msg.getSender(), MessagesLayoutScrollerWrapper.Destination.ANOTHER));
-            } else {
-                Optional<Pair<String, InputStream>> fileMsgOp;
-                try {
-                     fileMsgOp = chatClientService.processFileMessage(msg);
-                } catch (IOException e) {
-                    // todo:
-                    throw new RuntimeException(e);
-                }
+        List<Future<Optional<Pair<String, Pair<String, InputStream>>>>> fileMessagesOpFutures = new LinkedList<>();
+        for (MessageDto msg : fileMessages) {
+            fileMessagesOpFutures.add(
+                    executorForFileDownloading.submit(() -> chatClientService.processFileMessage(msg))
+            );
+        }
 
-                if (fileMsgOp.isPresent()) {
-                    String fileName = fileMsgOp.get().getKey();
-                    InputStream inputStream = fileMsgOp.get().getValue();
+        try {
+            for (var fileMessageOpFuture : fileMessagesOpFutures) {
+                var fileMessageOp = fileMessageOpFuture.get();
+
+                if (fileMessageOp.isPresent()) {
+                    String sender = fileMessageOp.get().getKey();
+                    String fileName = fileMessageOp.get().getValue().getKey();
+                    InputStream inputStream = fileMessageOp.get().getValue().getValue();
 
                     if (fileName.endsWith(".jpg") || fileName.endsWith(".png") || fileName.endsWith(".jpeg")) {
-                        wrapper.showImageMessage(fileName, inputStream, msg.getSender(), MessagesLayoutScrollerWrapper.Destination.ANOTHER);
+                        wrapper.showImageMessage(fileName, inputStream, sender, MessagesLayoutScrollerWrapper.Destination.ANOTHER);
                     } else {
-                        wrapper.showFileMessage(fileName, inputStream, msg.getSender(), MessagesLayoutScrollerWrapper.Destination.ANOTHER);
+                        wrapper.showFileMessage(fileName, inputStream, sender, MessagesLayoutScrollerWrapper.Destination.ANOTHER);
                     }
                 }
             }
+        } catch (ExecutionException e) {
+            Notification.show("the computation threw an exception trying to get the result", 5000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_ERROR);
+        } catch (InterruptedException e) {
+            Notification.show("the computation was interrupted trying to get the result", 5000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+
+        for (var textMessage : textMessages) {
+            var textMsgOp = chatClientService.processByteArrayMessage(textMessage);
+
+            textMsgOp.ifPresent(s -> wrapper.showTextMessage(s, textMessage.getSender(), MessagesLayoutScrollerWrapper.Destination.ANOTHER));
         }
     }
 

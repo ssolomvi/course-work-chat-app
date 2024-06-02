@@ -7,8 +7,6 @@ import ru.mai.exceptions.IllegalArgumentExceptionWithLog;
 import ru.mai.round_keys.RoundKeyGeneration;
 import ru.mai.utils.Operations;
 
-import java.util.Collection;
-
 public class FeistelCipherRC6 {
     private static final Logger log = LoggerFactory.getLogger(FeistelCipherRC6.class);
     private static byte[][] roundKeys;

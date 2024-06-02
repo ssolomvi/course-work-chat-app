@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Scope;
 import ru.mai.kafka.model.MessageDto;
 
 import java.time.Duration;
+import java.util.ConcurrentModificationException;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -23,27 +24,25 @@ public class KafkaMessageHandler {
     private static final Duration POLL_DATA_TIME = Duration.ofMillis(300);
     private KafkaProducer<String, MessageDto> producer = null;
     private KafkaConsumer<String, MessageDto> consumer = null;
-    private String login;
 
     public void init(String login) {
-        this.login = login;
         this.producer = KafkaManager.createKafkaProducer();
         this.consumer = KafkaManager.createKafkaConsumer(login);
     }
 
     public void sendMessage(String companion, MessageDto message) {
-//        Future<RecordMetadata> response =
-        producer.send(new ProducerRecord<>(KafkaManager.getTopicName(companion), message));
-//        Optional.ofNullable(response).ifPresent(rsp ->
-//                {
-//                    try {
-//                        log.info("Message send: {} from {} filename {}", rsp.get(), message.getSender(), message.getFilename());
-//                    } catch (InterruptedException | ExecutionException e) {
-//                        log.error("Error reading response: ", e);
-//                        Thread.currentThread().interrupt();
-//                    }
-//                }
-//        );
+        Future<RecordMetadata> response =
+                producer.send(new ProducerRecord<>(KafkaManager.getTopicName(companion), message));
+        Optional.ofNullable(response).ifPresent(rsp ->
+                {
+                    try {
+                        log.info("Message send: {} from {} filename {}", rsp.get(), message.getSender(), message.getFilename());
+                    } catch (InterruptedException | ExecutionException e) {
+                        log.error("Error reading response: ", e);
+                        Thread.currentThread().interrupt();
+                    }
+                }
+        );
     }
 
     public Optional<ConsumerRecords<String, MessageDto>> readMessages() {
@@ -55,7 +54,7 @@ public class KafkaMessageHandler {
 //            KafkaManager.deleteTopic(KafkaManager.getTopicName(login));
             producer.close();
             consumer.close();
-        } catch (InterruptException e) {
+        } catch (InterruptException | ConcurrentModificationException e) {
             log.warn("Error closing kafka producer/consumer: ", e);
         }
     }

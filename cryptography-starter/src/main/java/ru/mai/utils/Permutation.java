@@ -10,11 +10,11 @@ public class Permutation {
 
         int j = 0;
         if (indexRule == Operations.IndexingRule.FROM_MOST_TO_LEAST_START_WITH_1
-        || indexRule == Operations.IndexingRule.FROM_LEAST_TO_MOST_START_WITH_1) {
+                || indexRule == Operations.IndexingRule.FROM_LEAST_TO_MOST_START_WITH_1) {
             j++;
         }
 
-        for (int i = j ; i < pBlock.length + j; i++) {
+        for (int i = j; i < pBlock.length + j; i++) {
             Operations.setBit(i, Operations.getBit(pBlock[i - j], block, indexRule), result, indexRule);
         }
 

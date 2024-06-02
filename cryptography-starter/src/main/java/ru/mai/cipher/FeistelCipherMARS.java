@@ -263,7 +263,7 @@ public class FeistelCipherMARS {
 
             D = D ^ S[256 + Operations.lowestNBit(Operations.cyclicShiftRightInt(A, 24), 8)];
             C = C - S[Operations.lowestNBit(Operations.cyclicShiftRightInt(A, 16), 8)];
-            B = B - S[256  + Operations.lowestNBit(Operations.cyclicShiftRightInt(A, 8), 8)];
+            B = B - S[256 + Operations.lowestNBit(Operations.cyclicShiftRightInt(A, 8), 8)];
             B = B ^ S[Operations.lowestNBit(A, 8)];
         }
 

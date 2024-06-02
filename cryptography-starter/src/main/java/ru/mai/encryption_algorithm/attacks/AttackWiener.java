@@ -27,6 +27,7 @@ public class AttackWiener implements RSAAttacks {
      * If convergentFractions contains zero elements, p0 = {@code a}, q0 = 1.
      * If convergentFractions contains one element, p1 = a * p0 + 1, q1 = a * q0 + 0.
      * Else p_n = a_n * (p_(n-1)) + (p_(n-2)), q_n = q_n * (q_(n-1)) + (q_(n-2)).
+     *
      * @param a coefficient from continued fraction.
      * @return pair that represents convergent fraction for this {@code a}.
      */
@@ -56,6 +57,7 @@ public class AttackWiener implements RSAAttacks {
 
     /**
      * Calculates privateExponent and phi from publicExponent and n (modulo RSA)
+     *
      * @param publicKey a {@code Pair} where Key = publicExponent, Value = n (modulo RSA)
      * @return a {@code Pair} where Key = privateExponent, Value = phi
      */

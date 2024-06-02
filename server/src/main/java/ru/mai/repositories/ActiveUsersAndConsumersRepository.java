@@ -2,6 +2,7 @@ package ru.mai.repositories;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
+
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -9,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Repository
 public class ActiveUsersAndConsumersRepository {
     private final Set<String> activeUsers = ConcurrentHashMap.newKeySet();
+
     /**
      * One consumer per one user
      */

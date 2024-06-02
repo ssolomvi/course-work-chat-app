@@ -9,7 +9,7 @@ import java.util.ArrayList;
 public class GaloisFieldPolynomialOperations {
 
     private static final Logger log = LoggerFactory.getLogger(GaloisFieldPolynomialOperations.class);
-//    private static final ArrayList<Byte> polynomialsIrreducibleWithDegreeLessEIGHT = new ArrayList<>();
+    //    private static final ArrayList<Byte> polynomialsIrreducibleWithDegreeLessEIGHT = new ArrayList<>();
     private static final ArrayList<Byte> polynomialsIrreducibleWithDegreeEIGHT = new ArrayList<>();
 
     public static void printAllPolynomialsIrreducibleWithDegreeEIGHT() {
@@ -24,7 +24,7 @@ public class GaloisFieldPolynomialOperations {
         }
     }
 
-//    private static void constructingPolynomialsIrreducibleWithDegreeLessEIGHT() {
+    //    private static void constructingPolynomialsIrreducibleWithDegreeLessEIGHT() {
 //        if (!polynomialsIrreducibleWithDegreeLessEIGHT.isEmpty()) {
 //            return;
 //        }
@@ -74,8 +74,7 @@ public class GaloisFieldPolynomialOperations {
         return polynomialsIrreducibleWithDegreeEIGHT.contains(poly);
     }
 
-    public static byte add(byte poly1, byte poly2)
-    {
+    public static byte add(byte poly1, byte poly2) {
         return (byte) (poly1 ^ poly2);
     }
 
@@ -188,8 +187,7 @@ public class GaloisFieldPolynomialOperations {
 
         // 8 is a count of bits in byte
         for (int i = 0; i < 8; i++) {
-            if (((poly2 >> i) & 1) == 0)
-            {
+            if (((poly2 >> i) & 1) == 0) {
                 continue;
             }
             result ^= (short) (((poly1) & 0xFF) << i); // it's very important!!!!!!!!!!
@@ -200,12 +198,10 @@ public class GaloisFieldPolynomialOperations {
 
     private static byte getDivisionRemainderIrreduciblePolynomial(short multiplicationResult, byte modulo) {
         int leftShiftValue = 6;
-        while (leftShiftValue >= 0)
-        {
-            if (((multiplicationResult >> (8 + leftShiftValue)) & 1) == 1)
-            {
+        while (leftShiftValue >= 0) {
+            if (((multiplicationResult >> (8 + leftShiftValue)) & 1) == 1) {
                 // degrees from 0 to 7
-                multiplicationResult ^= (short) ((short) ((modulo & 0xFF) << leftShiftValue)  );
+                multiplicationResult ^= (short) ((short) ((modulo & 0xFF) << leftShiftValue));
                 // degree == 8
                 multiplicationResult &= (short) ((~(1 << (8 + leftShiftValue))));
             }
@@ -289,6 +285,7 @@ public class GaloisFieldPolynomialOperations {
 
         return builder.toString();
     }
+
     public static String polynomyalToString(short poly) {
         if (poly == 0) {
             return "0";

@@ -20,6 +20,7 @@ public class RoundKeyGenerationLOKI97 implements RoundKeyGeneration {
     /**
      * Function {@code g(K1, K3, K2) = f(K1 + K3 + (DELTA * i), K2)},
      * where "+" - the addition of two long values (module {@code 2^64)}
+     *
      * @param i number of round
      * @return Result of using Feistel function
      */

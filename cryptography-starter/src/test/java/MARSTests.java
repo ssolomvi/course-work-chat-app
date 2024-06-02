@@ -10,8 +10,7 @@ public class MARSTests {
         System.out.println(-7 % 15);
         System.out.println(Math.floorMod(-7, 15));
         int r = -7 % 15;
-        if (r < 0)
-        {
+        if (r < 0) {
             r += 15;
         }
 

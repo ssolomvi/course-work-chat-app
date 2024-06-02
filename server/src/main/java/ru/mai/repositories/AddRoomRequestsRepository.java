@@ -51,7 +51,7 @@ public class AddRoomRequestsRepository {
             initRoomRequests.get(companionLogin).put(login, response);
             return true;
         }
-            log.debug("{} already has init room request from {}", companionLogin, login);
+        log.debug("{} already has init room request from {}", companionLogin, login);
         return false;
     }
 

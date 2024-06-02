@@ -17,9 +17,9 @@ public class ChatMetadataEntity implements Serializable {
 
 
     /*
-    * identity field should be numeric and not string based, both for space saving and for performance reasons
-    * (matching keys on strings is slower than matching on integers)
-    * */
+     * identity field should be numeric and not string based, both for space saving and for performance reasons
+     * (matching keys on strings is slower than matching on integers)
+     * */
 //    @Id
     @Column(name = "companion")
     private String companion;

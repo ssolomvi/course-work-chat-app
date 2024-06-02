@@ -2,7 +2,6 @@ package ru.mai.services.chatroom;
 
 import org.springframework.stereotype.Repository;
 import ru.mai.InitRoomResponse;
-import ru.mai.utils.Operations;
 import ru.mai.utils.Pair;
 
 import java.math.BigInteger;

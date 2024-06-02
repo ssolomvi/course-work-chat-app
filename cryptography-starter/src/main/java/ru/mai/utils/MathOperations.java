@@ -147,7 +147,7 @@ public class MathOperations {
         }
 
         // rPrev = gcd, sPrev and tPrev - Bezu coefficients: a * sPrev + b * tPrev = gcd
-        return new int[] {rPrev, sPrev, tPrev};
+        return new int[]{rPrev, sPrev, tPrev};
     }
 
     public static int fastPowMod(int number, int degree, int modulo) {
@@ -166,7 +166,7 @@ public class MathOperations {
             flag = false;
         }
 
-        while (degree > 0){
+        while (degree > 0) {
             if ((degree & 1) == 1) {
                 toReturn *= number;
                 toReturn %= modulo;
