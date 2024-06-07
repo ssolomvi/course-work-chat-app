@@ -13,9 +13,9 @@ import java.math.BigInteger;
 // todo: ecnrypt() and decrypt() uses algorithm.E, in RSA: block A = algorithm.E(B), A.length != B.length
 public class RandomDelta extends EncryptionModeAbstract implements EncryptionModeCounter {
     private static final Logger log = LoggerFactory.getLogger(RandomDelta.class);
-
+    private final int nonceSize;
     private final BigInteger remainder;
-    private final byte[] nonce;
+    private byte[] nonce;
     private final BigInteger randomDeltaBI;
     private final int lengthCounter;
 
@@ -23,10 +23,9 @@ public class RandomDelta extends EncryptionModeAbstract implements EncryptionMod
         super(algorithm, initVector);
 
         // init nonce
-        int nonceSize = algorithm.getAlgorithmBlockForEncryption() / 2;
-        this.nonce = new byte[nonceSize];
-        System.arraycopy(initVector, 0, this.nonce, 0, nonceSize);
+        nonceSize = algorithm.getAlgorithmBlockForEncryption() / 2;
 
+        invokeNextAsNew();
         // init reminder
         this.remainder = BigInteger.ONE.shiftLeft(8 * nonceSize);
 
@@ -145,5 +144,11 @@ public class RandomDelta extends EncryptionModeAbstract implements EncryptionMod
         }
 
         return decryptResult;
+    }
+
+    @Override
+    public void invokeNextAsNew() {
+        this.nonce = new byte[nonceSize];
+        System.arraycopy(initVector, 0, this.nonce, 0, nonceSize);
     }
 }

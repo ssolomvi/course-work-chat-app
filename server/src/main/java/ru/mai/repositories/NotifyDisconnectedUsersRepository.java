@@ -16,10 +16,6 @@ public class NotifyDisconnectedUsersRepository {
         notifyAbout.put(user, users);
     }
 
-    public boolean containsCompanion(String user) {
-        return notifyAbout.containsKey(user);
-    }
-
     public List<String> get(String userToNotify) {
         List<String> toNotifyAbout = new LinkedList<>();
 

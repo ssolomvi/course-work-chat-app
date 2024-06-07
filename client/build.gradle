@@ -42,8 +42,6 @@ dependencies {
 
     // vaadin
     implementation 'com.vaadin:vaadin-spring-boot-starter:24.3.11'
-//    implementation 'com.vaadin:vaadin-core:24.3.11'
-//    implementation 'com.vaadin:vaadin-maven-plugin:24.3.11'
 
     // annotations
     implementation 'javax.annotation:javax.annotation-api:1.3.2'

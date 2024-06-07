@@ -3,7 +3,7 @@ package ru.mai.encryption_mode.abstr;
 import ru.mai.encryption_mode.EncryptionMode;
 
 // CTR, RD
-public interface EncryptionModeCounter extends EncryptionMode {
+public interface EncryptionModeCounter extends EncryptionMode, EncryptionModeWithInitVector {
     /**
      * Encrypts {@code input} in multithreading mode with use of pre-counting some data.
      * <p>

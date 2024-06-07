@@ -42,8 +42,4 @@ public abstract class EncryptionModeAbstract implements EncryptionMode {
     public int getAlgorithmBlockForDecryption() {
         return algorithm.getAlgorithmBlockForDecryption();
     }
-
-    public static boolean initVectorNeeded() {
-        return true;
-    }
 }

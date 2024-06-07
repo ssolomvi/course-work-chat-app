@@ -28,9 +28,5 @@ public class Server implements CommandLineRunner {
         if (server != null) {
             server.awaitTermination();
         }
-//        ChatServiceServer server = new ChatServiceServer(8090);
-//
-//        server.start();
-//        server.blockUntilShutdown();
     }
 }

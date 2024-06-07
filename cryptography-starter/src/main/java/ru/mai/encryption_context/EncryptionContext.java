@@ -13,8 +13,6 @@ import java.nio.file.Path;
  */
 public interface EncryptionContext {
     byte[] encrypt(byte[] input);
-
-    // todo: return future instead, so this method will be accessible in multithreading
     void encrypt(Path input, Path output);
 
     void encrypt(InputStream inputStream, OutputStream outputStream) throws IOException;

@@ -8,12 +8,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Repository
-public class ActiveUsersAndConsumersRepository {
+public class ActiveUsersRepository {
     private final Set<String> activeUsers = ConcurrentHashMap.newKeySet();
 
-    /**
-     * One consumer per one user
-     */
     public boolean isActive(String user) {
         return activeUsers.contains(user);
     }

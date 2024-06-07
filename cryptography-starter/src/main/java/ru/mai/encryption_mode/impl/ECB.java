@@ -88,7 +88,4 @@ public class ECB extends EncryptionModeAbstract {
         return decryptResult;
     }
 
-    public static boolean initVectorNeeded() {
-        return false;
-    }
 }

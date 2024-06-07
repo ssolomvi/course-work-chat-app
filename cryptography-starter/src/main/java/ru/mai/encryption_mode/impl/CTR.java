@@ -13,16 +13,16 @@ import java.math.BigInteger;
 // todo: ecnrypt() and decrypt() uses algorithm.E, in RSA: block A = algorithm.E(B), A.length != B.length
 public class CTR extends EncryptionModeAbstract implements EncryptionModeCounter {
     private static final Logger log = LoggerFactory.getLogger(CTR.class);
-
+    private final int nonceSize;
     private final BigInteger remainder;
-    private final byte[] nonce;
+    private byte[] nonce;
 
     public CTR(EncryptionAlgorithm algorithm, byte[] initVector) {
         super(algorithm, initVector);
 
-        int nonceSize = algorithm.getAlgorithmBlockForEncryption() / 2;
-        this.nonce = new byte[nonceSize];
-        System.arraycopy(initVector, 0, this.nonce, 0, nonceSize);
+        nonceSize = algorithm.getAlgorithmBlockForEncryption() / 2;
+
+        invokeNextAsNew();
 
         this.remainder = BigInteger.ONE.shiftLeft(8 * nonceSize);
     }
@@ -130,5 +130,11 @@ public class CTR extends EncryptionModeAbstract implements EncryptionModeCounter
         }
 
         return decryptResult;
+    }
+
+    @Override
+    public void invokeNextAsNew() {
+        this.nonce = new byte[nonceSize];
+        System.arraycopy(initVector, 0, this.nonce, 0, nonceSize);
     }
 }

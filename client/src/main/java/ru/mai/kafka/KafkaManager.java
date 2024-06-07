@@ -81,8 +81,8 @@ public class KafkaManager {
             ListTopicsResult topics = admin.listTopics();
             if (topics.names().get() != null && (topics.names().get().contains(topicName))) {
                 log.info("Topic {} already exist", topicName);
-                return;
 
+                return;
             }
 
             admin.createTopics(Collections.singleton(topic)).all().get(WAIT_AT_MOST_SEC, TimeUnit.SECONDS);

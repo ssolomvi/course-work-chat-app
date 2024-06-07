@@ -8,7 +8,7 @@ import ru.mai.Login;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.kafka.KafkaMessageHandler;
 import ru.mai.kafka.model.MessageDto;
-import ru.mai.services.ContextsRepository;
+import ru.mai.services.repositories.ContextsRepository;
 import ru.mai.services.repositories.FilesUnderDownloadRepository;
 import ru.mai.utils.Pair;
 

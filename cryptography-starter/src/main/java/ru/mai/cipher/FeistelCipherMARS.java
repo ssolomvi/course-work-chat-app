@@ -22,7 +22,6 @@ public class FeistelCipherMARS {
         roundKeys = keyGen.generateRoundKeys(key);
     }
 
-    // todo: make it prettier
     private int[] encryptionFunction(int A, int k1, int k2, int[] S) {
         int[] result = new int[3];
 
@@ -166,7 +165,7 @@ public class FeistelCipherMARS {
     public byte[] methodForConstructingBlockCiphersDecryption(byte[] input, int roundCount) {
         int lenInput = input.length;
         if (lenInput != 16) {
-            throw new IllegalArgumentExceptionWithLog("methodForConstructingBlockCiphersEncryption:" +
+            throw new IllegalArgumentExceptionWithLog("methodForConstructingBlockCiphersDecryption:" +
                     "Param input must be length 16 bytes", log);
         }
 

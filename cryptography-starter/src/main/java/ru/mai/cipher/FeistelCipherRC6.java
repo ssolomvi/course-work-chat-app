@@ -92,7 +92,6 @@ public class FeistelCipherRC6 {
                                                     A,
                                                     t
                                             )),
-//                            u[3] & 0xff & ~(~0 << log2w)
                                     Operations.bytesArrToInt(u)
                             )),
                     roundKeys[2 * i]
@@ -106,7 +105,6 @@ public class FeistelCipherRC6 {
                                                     C,
                                                     u
                                             )),
-//                            t[3] & 0xff & ~(~0 << log2w)
                                     Operations.bytesArrToInt(t)
                             )),
                     roundKeys[2 * i + 1]
@@ -138,7 +136,7 @@ public class FeistelCipherRC6 {
 
     public byte[] methodForConstructingBlockCiphersDecryption(byte[] input, int roundCount) {
         if (roundKeys.length != 2 * (roundCount + 2)) {
-            throw new IllegalArgumentExceptionWithLog("methodForConstructingBlockCiphersEncryption: " +
+            throw new IllegalArgumentExceptionWithLog("methodForConstructingBlockCiphersDecryption: " +
                     "Param roundCount must be 2 * (roundCount + 2) == roundKeys.length", log);
         }
 
@@ -146,7 +144,7 @@ public class FeistelCipherRC6 {
         int wBytes = RC6.w / 8;
 
         if (lenInput != wBytes * 4) {
-            throw new IllegalArgumentExceptionWithLog("methodForConstructingBlockCiphersEncryption:" +
+            throw new IllegalArgumentExceptionWithLog("methodForConstructingBlockCiphersDecryption:" +
                     "Param input must be length 16 bytes", log);
         }
 
@@ -218,7 +216,6 @@ public class FeistelCipherRC6 {
                                                     C,
                                                     roundKeys[2 * i + 1]
                                             )),
-//                            t[3] & 0xff & ~(~0 << log2w)
                                     Operations.bytesArrToInt(t)
                             )),
                     u
@@ -232,7 +229,6 @@ public class FeistelCipherRC6 {
                                                     A,
                                                     roundKeys[2 * i]
                                             )),
-//                            u[3] & 0xff & ~(~0 << log2w)
                                     Operations.bytesArrToInt(u)
                             )),
                     t

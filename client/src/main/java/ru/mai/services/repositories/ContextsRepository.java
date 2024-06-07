@@ -1,4 +1,4 @@
-package ru.mai.services;
+package ru.mai.services.repositories;
 
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Repository;

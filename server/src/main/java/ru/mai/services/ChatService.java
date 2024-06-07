@@ -15,7 +15,7 @@ import java.util.List;
 public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
     private static final String DIFFIE_HELLMAN_G = "17";
     private final ConnectResponse connectResponse = ConnectResponse.newBuilder().setDiffieHellmanG(DIFFIE_HELLMAN_G).build();
-    private final ActiveUsersAndConsumersRepository usersRep;
+    private final ActiveUsersRepository usersRep;
     private final NotifyDisconnectedUsersRepository notifyDisconnectedRep;
     private final DeleteRoomRequestsRepository deleteRequestsRep;
     private final AddRoomRequestsRepository addRequestsRep;
@@ -23,7 +23,7 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
     private final ChatRoomRepository chatRep;
 
 
-    public ChatService(@Autowired ActiveUsersAndConsumersRepository usersRep,
+    public ChatService(@Autowired ActiveUsersRepository usersRep,
                        @Autowired NotifyDisconnectedUsersRepository notifyDisconnectedRep,
                        @Autowired DeleteRoomRequestsRepository deleteRequestsRep,
                        @Autowired AddRoomRequestsRepository addRequestsRep,
@@ -54,7 +54,12 @@ public class ChatService extends ChatServiceGrpc.ChatServiceImplBase {
             return;
         }
         log.debug("{}: disconnected", request.getLogin());
-        notifyDisconnectedRep.put(request.getLogin(), chatRep.getAllCompanions(request.getLogin()));
+
+        var clientCompanions = chatRep.getAllCompanions(request.getLogin());
+        if (!clientCompanions.isEmpty()) {
+            notifyDisconnectedRep.put(request.getLogin(), clientCompanions);
+        }
+
         usersRep.deleteUser(request.getLogin());
 
         chatRep.removeIfDisconnected(request.getLogin());

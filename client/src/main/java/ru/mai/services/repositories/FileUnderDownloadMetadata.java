@@ -11,7 +11,7 @@ public class FileUnderDownloadMetadata {
     private final String sender;
     private final AtomicReference<String> tmpFilename = new AtomicReference<>();
     private final AtomicBoolean firstCall = new AtomicBoolean(true);
-    private final AtomicInteger partsSent = new AtomicInteger(0);
+    private final AtomicInteger partsGot = new AtomicInteger(0);
 
     public FileUnderDownloadMetadata(String sender) {
         this.sender = sender;
@@ -25,7 +25,7 @@ public class FileUnderDownloadMetadata {
     }
 
     public int incrementAndGetPartsGot() {
-        return partsSent.incrementAndGet();
+        return partsGot.incrementAndGet();
     }
 
 }
