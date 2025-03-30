@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import ru.mai.Login;
+import ru.mai.compression.CompressingService;
 import ru.mai.encryption_context.EncryptionContext;
 import ru.mai.kafka.KafkaMessageHandler;
 import ru.mai.kafka.model.MessageDto;
@@ -26,19 +27,25 @@ import static ru.mai.config.ClientConstants.FILE_PAGE_SIZE;
 @Scope("prototype")
 public class MessageHandler {
     private static final Integer FILE_PAGE_SIZE_FOR_ENCRYPTED = (int) (FILE_PAGE_SIZE * 0.1 + FILE_PAGE_SIZE);
-    private static final String FILE_PREFIX_DOWNLOAD = "downloads" + File.separator;
     private static final String FILE_PREFIX_UPLOAD = "uploads" + File.separator;
+    private static final String FILE_PREFIX_DOWNLOAD = "downloads" + File.separator;
+    private static final String COMPRESSED = "compressed";
+    private static final String DECOMPRESSED = "decompressed";
     private final ExecutorService fileExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() / 2);
     private final ContextsRepository contextsRepository;
     private final FilesUnderDownloadRepository fileUnderDownloadRepository;
     private final KafkaMessageHandler kafkaMessageHandler;
+    private final CompressingService compressingService;
 
-    public MessageHandler(@Autowired ContextsRepository contextsRepository,
-                          @Autowired FilesUnderDownloadRepository fileUnderDownloadRepository,
-                          @Autowired KafkaMessageHandler kafkaMessageHandler) {
+    @Autowired
+    public MessageHandler(ContextsRepository contextsRepository,
+                          FilesUnderDownloadRepository fileUnderDownloadRepository,
+                          KafkaMessageHandler kafkaMessageHandler,
+                          CompressingService compressingService) {
         this.contextsRepository = contextsRepository;
         this.fileUnderDownloadRepository = fileUnderDownloadRepository;
         this.kafkaMessageHandler = kafkaMessageHandler;
+        this.compressingService = compressingService;
     }
 
     public void init(String login) {
@@ -90,24 +97,21 @@ public class MessageHandler {
 
         var context = op.get();
 
-        int numberOfPartitions = (int) (fileSize / FILE_PAGE_SIZE + (fileSize % FILE_PAGE_SIZE == 0 ? 0 : 1));
-        UUID id = UUID.randomUUID();
+        var numberOfPartitions = (int) (fileSize / FILE_PAGE_SIZE + (fileSize % FILE_PAGE_SIZE == 0 ? 0 : 1));
+        var id = UUID.randomUUID();
 
-        File outFile = new File(String.format("%s%s%s", FILE_PREFIX_UPLOAD, System.currentTimeMillis(), filename)); // encrypted file
-
-        try (in) {
-            try (FileOutputStream out = new FileOutputStream(outFile)) {
-                context.encrypt(in, out);
-            }
-        }
+        var tmpFilename = String.format("%s%s", System.currentTimeMillis(), filename);
+        var compressedFile = compress(tmpFilename, in);
+        var encryptedFile = encrypt(context, tmpFilename, compressedFile);
+        deleteFileWithLog(compressedFile);
 
         long blockOffset = 0;
         int currIndex = 0;
         CountDownLatch countDownLatch = new CountDownLatch(numberOfPartitions);
 
-        final long encryptedFileSize = Files.size(outFile.toPath());
+        final long encryptedFileSize = Files.size(encryptedFile.toPath());
 
-        log.debug("Sending file {} of size {}", filename, Files.size(outFile.toPath()));
+        log.debug("Sending file {} of size {}", filename, Files.size(encryptedFile.toPath()));
 
         try {
             while (blockOffset < encryptedFileSize) {
@@ -116,7 +120,7 @@ public class MessageHandler {
 
                 fileExecutor.submit(() -> {
                     byte[] buffer;
-                    try (RandomAccessFile encIn = new RandomAccessFile(outFile, "r")) {
+                    try (RandomAccessFile encIn = new RandomAccessFile(encryptedFile, "r")) {
                         encIn.seek(finalBlockOffset);
                         if (encryptedFileSize - finalBlockOffset < FILE_PAGE_SIZE) {
                             buffer = new byte[(int) (encryptedFileSize - finalBlockOffset)];
@@ -140,13 +144,13 @@ public class MessageHandler {
             }
         } catch (RuntimeException e) {
             log.debug("Error encrypting and sending file, ", e);
-            deleteFileWithLog(outFile);
+            deleteFileWithLog(encryptedFile);
         }
 
         countDownLatch.await();
         log.info("Sent file {} to {}", filename, companion);
 
-        deleteFileWithLog(outFile);
+        deleteFileWithLog(encryptedFile);
     }
 
     private void deleteFileWithLog(File file) {
@@ -191,10 +195,6 @@ public class MessageHandler {
         return Optional.of(decryptedString);
     }
 
-    private String getFilenameWithDownloadDirectory(String fileName) {
-        return String.format("%s%s", FILE_PREFIX_DOWNLOAD, fileName);
-    }
-
 
     /**
      * Writes file part to corresponding tmp file and decrypts it if all parts are received
@@ -227,30 +227,70 @@ public class MessageHandler {
 
         var contextOp = contextsRepository.get(sender);
         if (contextOp.isEmpty()) {
-            // todo: better throw custom exception
             log.warn("Error trying to decrypt file {} for {} : no encryption context", msg.getFilename(), msg.getSender());
             deleteFileWithLog(toDecryptFile);
+
             return Optional.empty();
         }
 
         var context = contextOp.get();
 
-        File decryptedFile = new File(getFilenameWithDownloadDirectory(filename));
 
         if (Files.size(toDecryptFile.toPath()) == 0) {
             deleteFileWithLog(toDecryptFile);
+
             return Optional.of(new Pair<>(sender, new Pair<>(filename, new ByteArrayInputStream(new byte[0]))));
         }
 
-        try (FileInputStream in = new FileInputStream(toDecryptFile)) {
-            try (FileOutputStream out = new FileOutputStream(decryptedFile)) {
-                context.decrypt(in, out);
-            }
+        var decryptedFile = decrypt(context, filename, toDecryptFile);
+        deleteFileWithLog(toDecryptFile);
+        var decompressedFile = decompress(filename, decryptedFile);
+        deleteFileWithLog(decryptedFile);
+
+        return Optional.of(new Pair<>(sender, new Pair<>(filename, new FileInputStream(decompressedFile))));
+    }
+
+    private File encrypt(EncryptionContext context, String filename, File compressedFile) throws IOException {
+        var encryptedFile = new File(String.format("%s%s", FILE_PREFIX_UPLOAD, filename)); // encrypted file
+        try (var compressedFis = new FileInputStream(compressedFile);
+             var encryptedFos = new FileOutputStream(encryptedFile)) {
+            context.encrypt(compressedFis, encryptedFos);
         }
 
-        deleteFileWithLog(toDecryptFile);
+        return encryptedFile;
+    }
 
-        return Optional.of(new Pair<>(sender, new Pair<>(filename, new FileInputStream(decryptedFile))));
+    private File decrypt(EncryptionContext context, String filename, File toDecryptFile) throws IOException {
+        var decryptedFilename = String.format("%s%s", FILE_PREFIX_DOWNLOAD, filename);
+        var decryptedFile = new File(decryptedFilename);
+        try (var in = new FileInputStream(toDecryptFile);
+             var out = new FileOutputStream(decryptedFile)) {
+            context.decrypt(in, out);
+        }
+
+        return decryptedFile;
+    }
+
+    // todo: check if it works
+    private File compress(String filename, InputStream in) throws IOException {
+        var compressedFile = new File(String.format("%s%s%s", FILE_PREFIX_UPLOAD, COMPRESSED, filename));
+
+        try (in; var compressedFos = new FileOutputStream(compressedFile)) {
+            compressingService.compress(in, compressedFos);
+        }
+
+        return compressedFile;
+    }
+
+    private File decompress(String filename, File decryptedFile) throws IOException {
+        var decompressedFilename = String.format("%s%s%s", FILE_PREFIX_DOWNLOAD, DECOMPRESSED, filename);
+        var decompressedFile = new File(decompressedFilename);
+        try (var decryptedFis = new FileInputStream(decryptedFile);
+             var decompressedFos = new FileOutputStream(decompressedFile)) {
+            compressingService.decompress(decryptedFis, decompressedFos);
+        }
+
+        return decompressedFile;
     }
 
     public void close() {

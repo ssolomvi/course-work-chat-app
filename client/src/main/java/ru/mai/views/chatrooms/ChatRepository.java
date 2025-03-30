@@ -12,7 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @Repository
 @Scope("prototype")
 public class ChatRepository {
-    private final Map<String, List<Div>> chats = new ConcurrentHashMap();
+
+    private final Map<String, List<Div>> chats = new ConcurrentHashMap<>();
 
     public void putMessage(String companion, Div item) {
         List<Div> messages;
@@ -33,4 +34,5 @@ public class ChatRepository {
     public List<Div> getAllMessages(String companion) {
         return chats.getOrDefault(companion, new LinkedList<>());
     }
+
 }

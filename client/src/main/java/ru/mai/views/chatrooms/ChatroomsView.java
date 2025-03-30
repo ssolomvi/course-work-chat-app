@@ -23,13 +23,12 @@ import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.receivers.MultiFileBuffer;
 import com.vaadin.flow.router.*;
 import com.vaadin.flow.server.StreamResource;
-import com.vaadin.flow.theme.Theme;
-import com.vaadin.flow.theme.lumo.Lumo;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import com.vaadin.flow.theme.lumo.LumoUtility.Padding;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import ru.mai.Utils;
 import ru.mai.kafka.model.MessageDto;
 import ru.mai.services.ChatClientService;
 import ru.mai.utils.Pair;
@@ -393,14 +392,21 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         upload.addSucceededListener(event -> {
             if (currentChat == null) {
                 String detailError = "No chat selected";
-                Notification.show(detailError, 5000, Notification.Position.BOTTOM_END).addThemeVariants(NotificationVariant.LUMO_WARNING);
+                Notification.show(detailError, 5000, Notification.Position.BOTTOM_END)
+                        .addThemeVariants(NotificationVariant.LUMO_WARNING);
                 fireEvent(new FileRejectedEvent(upload, detailError));
                 return;
             }
             // Get information about the uploaded file
             String fileName = event.getFileName();
 
-            filesToSendRepository.put(currentChat.getCompanion(), fileName, memoryBuffer.getInputStream(fileName), memoryBuffer.getInputStream(fileName), event.getContentLength());
+            filesToSendRepository.put(
+                    currentChat.getCompanion(),
+                    fileName,
+                    memoryBuffer.getInputStream(fileName),
+                    memoryBuffer.getInputStream(fileName),
+                    event.getContentLength()
+            );
         });
 
         return upload;
@@ -629,7 +635,8 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
                     String fileName = fileMessageOp.get().getValue().getKey();
                     InputStream inputStream = fileMessageOp.get().getValue().getValue();
 
-                    if (fileName.endsWith(".jpg") || fileName.endsWith(".png") || fileName.endsWith(".jpeg")) {
+                    var extension = extension(fileName);
+                    if (Utils.SUPPORTED_IMAGE_FORMATS.contains(extension)) {
                         wrapper.showImageMessage(fileName, inputStream, sender, MessagesLayoutScrollerWrapper.Destination.ANOTHER);
                     } else {
                         wrapper.showFileMessage(fileName, inputStream, sender, MessagesLayoutScrollerWrapper.Destination.ANOTHER);
@@ -667,7 +674,8 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
 
                 chatClientService.sendFile(companion, fileName, streamForSending, size);
 
-                if (fileName.endsWith(".jpg") || fileName.endsWith(".png") || fileName.endsWith(".jpeg")) {
+                var extension = extension(fileName);
+                if (Utils.SUPPORTED_IMAGE_FORMATS.contains(extension)) {
                     wrapper.showImageMessage(fileName, streamForDepicting, companion, MessagesLayoutScrollerWrapper.Destination.OWN);
                 } else {
                     wrapper.showFileMessage(fileName, streamForDepicting, companion, MessagesLayoutScrollerWrapper.Destination.OWN);
@@ -679,6 +687,18 @@ public class ChatroomsView extends HorizontalLayout implements HasUrlParameter<S
         } catch (InterruptedException e) {
             log.error("Interrupted exception happened trying to send file", e);
         }
+    }
+
+    private String extension(String fileName) {
+        String extension;
+        var extensionIndex = fileName.lastIndexOf(".") + 1;
+        if (fileName.length() > extensionIndex) {
+            extension = fileName.substring(extensionIndex);
+        } else {
+            extension = "";
+        }
+
+        return extension;
     }
 
     private void setMobile(boolean mobile) {

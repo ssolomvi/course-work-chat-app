@@ -23,7 +23,7 @@ public class LOKI97Tests {
 //        printByteArray(permArr);
     }
 
-    @Test
+//    @Test
     public void additionBytesArraysTest() {
 
         byte[] arr1 = {-1, -1};

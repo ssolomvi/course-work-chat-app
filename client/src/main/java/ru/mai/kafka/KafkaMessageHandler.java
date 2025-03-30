@@ -51,7 +51,6 @@ public class KafkaMessageHandler {
 
     public void close() {
         try {
-//            KafkaManager.deleteTopic(KafkaManager.getTopicName(login));
             producer.close();
             consumer.close();
         } catch (InterruptException | ConcurrentModificationException e) {
